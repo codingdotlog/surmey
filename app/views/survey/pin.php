@@ -17,9 +17,13 @@
 
 <body class="fixed inset-0 w-full h-full flex bg-gray-200 dark:bg-slate-700 dark:text-gray-200 items-center justify-center min-[980px]:px-4">
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-4 max-[980px]:mx-4" x-data="app()">
-        <div class="font-thin px-2 pb-4 text-lg">Enter your pin code</div>
+        <div class="font-thin px-2 pb-4 text-lg">{lang("participate.pin.enter")}</div>
         <div class="font-thin px-2 pb-4 text-center text-gray-500">
-            <b>+90 (***) *** {$pin->phoneLastNum4}</b><br>Doğrulama kodu gönderildi
+            {if isset($pin->channel) && $pin->channel === "email"}
+                <b>{$pin->maskedEmail}</b><br>{lang("participate.pin.sent.email")}
+            {else}
+                <b>+90 (***) *** {$pin->phoneLastNum4}</b><br>{lang("participate.pin.sent.sms")}
+            {/if}
         </div>
         <div class="flex">
             <template x-for="(l,i) in pinlength" :key="`codefield_${ i }`">

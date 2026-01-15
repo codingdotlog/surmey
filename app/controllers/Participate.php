@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Helpers\Mail;
 use App\Models\Participator;
 use App\Models\Personal;
 use App\Models\Survey;
@@ -48,25 +49,81 @@ class Participate extends Controller
 		$surveyId = session_get("surveyId");
 
 		$post = Request::post();
-		$validate = validate($post, [
-			"phone" => ["name" => "Telefon", "required" => true, "min" => 10, "phone" => "true"],
-			"csrf" => ["name" => "token", "required" => true]
-		]);
-
 		if (! check_csrf($post->csrf))
-			warning("TOKEN_ERROR - Sayfayı yenileyip tekrar deneyin");
+			warninglang("csrf.error");
 
-		if ($validate)
-			warning($validate);
+		$phone = isset($post->phone) ? trim((string)$post->phone) : "";
+		$email = isset($post->email) ? trim((string)$post->email) : "";
+		$requestedChannel = isset($post->channel) ? trim((string)$post->channel) : "";
 
-		$post->phone = str_replace(["(", ")", " "], "", $post->phone);
+		if ($requestedChannel && !in_array($requestedChannel, ["phone", "email"]))
+			warninglang("participate.verify.method.invalid");
 
-		$personalId = Personal::exists($post->phone);
+		$personalId = 0;
+		$channel = "";
+
+		// If a channel is explicitly selected, only accept that path.
+		if ($requestedChannel === "email") {
+			if ($email === "")
+				warninglang("participate.verify.email.required");
+
+			if (! validate_email($email))
+				warning(lang("validation.email_error"));
+
+			$personalId = (int) Personal::existsByEmail($email);
+			$channel = "email";
+		} elseif ($requestedChannel === "phone") {
+			if ($phone === "")
+				warninglang("participate.verify.phone.required");
+
+			$validate = validate((object)[
+				"phone" => $phone,
+				"csrf" => $post->csrf
+			], [
+				"phone" => ["name" => "Telefon", "required" => true, "min" => 10, "phone" => "true"],
+				"csrf" => ["name" => "token", "required" => true]
+			]);
+
+			if ($validate)
+				warning($validate);
+
+			$phone = str_replace(["(", ")", " "], "", $phone);
+			$personalId = (int) Personal::exists($phone);
+			$channel = "phone";
+		} else {
+			// Backwards compatibility: if channel isn't provided, infer it from filled input.
+			if ($phone === "" && $email === "")
+				warninglang("participate.verify.contact.required");
+
+			if ($email !== "") {
+				if (! validate_email($email))
+					warninglang("validation.email_error");
+
+				$personalId = (int) Personal::existsByEmail($email);
+				$channel = "email";
+			} else {
+				$validate = validate((object)[
+					"phone" => $phone,
+					"csrf" => $post->csrf
+				], [
+					"phone" => ["name" => "Telefon", "required" => true, "min" => 10, "phone" => "true"],
+					"csrf" => ["name" => "token", "required" => true]
+				]);
+
+				if ($validate)
+					warning($validate);
+
+				$phone = str_replace(["(", ")", " "], "", $phone);
+				$personalId = (int) Personal::exists($phone);
+				$channel = "phone";
+			}
+		}
+
 		if (! $personalId)
-			warning("Personel bulunamadı!");
+			warninglang("participate.personal.not.found");
 
 		if (Participator::checkSurveyIsParticipated($surveyId, $personalId, isDone: true))
-			warning("Bu anketi daha önce zaten cevapladınız!");
+			warninglang("participate.already.answered");
 
 		# find a unique usable pin for the participator
 		while (Participator::checkToken(($pin = join(randomSequence(6)))));
@@ -74,14 +131,28 @@ class Participate extends Controller
 		$post->pin = $pin;
 		$tokenTime = time();
 
-		$last4 = substr($post->phone, strlen($post->phone) - 4, strlen($post->phone));
+		$last4 = $channel === "phone"
+			? substr($phone, max(strlen($phone) - 4, 0), 4)
+			: "";
+
+		$maskedEmail = "";
+		if ($channel === "email") {
+			$parts = explode("@", $email, 2);
+			$local = $parts[0] ?? "";
+			$domain = $parts[1] ?? "";
+			$maskedLocal = strlen($local) <= 2 ? $local : substr($local, 0, 2) . str_repeat("*", max(strlen($local) - 2, 0));
+			$maskedEmail = $maskedLocal . "@" . $domain;
+		}
 
 		# set temporary pin value to session as tempPin
 		session_set("tempPin", (object) [
 			"token" => hash("sha256", $pin),
 			"time" => $tokenTime,
-			"phone" => $post->phone,
-			"phoneLastNum4" => substr($last4, 0, 2) . " " . substr($last4, 2, 4)
+			"channel" => $channel,
+			"phone" => $phone,
+			"email" => $email,
+			"maskedEmail" => $maskedEmail,
+			"phoneLastNum4" => $channel === "phone" ? (substr($last4, 0, 2) . " " . substr($last4, 2, 4)) : ""
 		]);
 
 		$answerId = Participator::answerExists($surveyId, $personalId);
@@ -105,9 +176,14 @@ class Participate extends Controller
 		$surveyId = session_get("surveyId");
 		$survey = Survey::exists("id", $surveyId);
 
-		$messages[] = ["no" => $post->phone, "msg" => "Anket sistemine giriş için onay kodu: " . $pin];
+		if ($channel === "phone") {
+			$messages[] = ["no" => $phone, "msg" => lang("participate.sms.otp.body", $pin)];
+			\SmsHelper::sendOtp($phone, lang("participate.sms.otp.body.ascii", $pin));
+		} else {
+			$content = lang("participate.email.otp.body", $pin);
+			Mail::send(lang("participate.email.otp.subject"), [$email], $content);
+		}
 
-		\SmsHelper::sendOtp($post->phone, "Anket katilim icin onay kodu: " . $pin);
 		if ($result)
 			success(redirect: "/participate/pin");
 
@@ -131,7 +207,7 @@ class Participate extends Controller
 		}
 
 		$this->render("survey/pin", [
-			"title" => "Telefon Onayı",
+			"title" => lang("participate.verify.title"),
 			"pin" => $tempPin,
 			"time" => $tempPin->time
 		]);

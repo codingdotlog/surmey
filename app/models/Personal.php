@@ -16,4 +16,12 @@ final class Personal extends Model
             ->or_where("phone2", "=", $phone)
             ->first();
     }
+
+    public static function existsByEmail(string $email)
+    {
+        return Database::get()->select("id")
+            ->from("personals")
+            ->where("email", "=", $email)
+            ->first();
+    }
 }

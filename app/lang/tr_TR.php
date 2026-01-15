@@ -80,7 +80,7 @@ return [
 	"about" => "Hakkında",
 	"photo" => "Fotoğraf",
 	#Participants must be confirmed by phone
-	"create.survey.phone" => "Katılımcıların telefonla onaylanması gerekmektedir.",
+	"create.survey.phone" => "Katılımcıların tel yada e-posta adresi ile doğrulama yapması gerekmektedir.",
 	"survey" => "Anket",
 	"reports" => "Raporlar",
 	"create.survey" => "Yeni Anket Oluştur",
@@ -89,5 +89,32 @@ return [
 	"create.survey.desc" => "Bu bilgiler herkese açık olarak görüntülenecektir, bu nedenle ne paylaştığınıza dikkat edin.",
 	"settings" => "Ayarlar",
 	"pin.error" => "Doğrulama kodu yanlış! Lütfen kontrol ederek tekrar deneyiniz.",
-	"survey.successfully.answered" => "<span class='loading me-2'></span> Anketi cevapladığınız için teşekkür ederiz..."
+	"survey.successfully.answered" => "<span class='loading me-2'></span> Anketi cevapladığınız için teşekkür ederiz...",
+
+	# Participate (phone/email verification)
+	"type.phone" => "Telefon",
+	"type.email" => "E-Posta",
+	"participate.welcome" => "Hoşgeldiniz",
+	"participate.choose.method" => "Ankete katılmak için doğrulama yöntemini seçiniz...",
+	"participate.continue" => "DEVAM ET",
+	"participate.sms.hint" => "SMS ile doğrulama kodu gönderilecektir.",
+	"participate.email.hint" => "E-posta ile doğrulama kodu gönderilecektir.",
+	"participate.email.placeholder" => "example@example.com",
+
+	"participate.verify.title" => "Doğrulama",
+	"participate.pin.enter" => "Doğrulama kodunuzu girin",
+	"participate.pin.sent.sms" => "Doğrulama kodu gönderildi",
+	"participate.pin.sent.email" => "Doğrulama kodu e-posta ile gönderildi",
+
+	"participate.verify.method.invalid" => "Lütfen geçerli bir doğrulama yöntemi seçin!",
+	"participate.verify.email.required" => "Lütfen e-posta adresinizi girin!",
+	"participate.verify.phone.required" => "Lütfen telefon numaranızı girin!",
+	"participate.verify.contact.required" => "Lütfen telefon numaranızı veya e-posta adresinizi girin!",
+	"participate.personal.not.found" => "Personel bulunamadı!",
+	"participate.already.answered" => "Bu anketi daha önce zaten cevapladınız!",
+
+	"participate.sms.otp.body" => "Anket sistemine giriş için onay kodu: %s",
+	"participate.sms.otp.body.ascii" => "Anket katilim icin onay kodu: %s",
+	"participate.email.otp.subject" => "Anket Doğrulama Kodu",
+	"participate.email.otp.body" => "Anket katılımı için doğrulama kodunuz: <b>%s</b>"
 ];
