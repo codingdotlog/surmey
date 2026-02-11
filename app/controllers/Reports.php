@@ -111,7 +111,7 @@ class Reports extends Controller
                 continue;
 
             $inline = [
-                $participator->id,
+                $participator->personalId,
                 $participator->fullname
             ];
 

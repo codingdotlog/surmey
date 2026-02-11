@@ -36,6 +36,8 @@ class Participate extends Controller
 	#[route(method: route::xhr_post, uri: "verify-step1")]
 	public function verifyPhone()
 	{
+		error_reporting(E_ALL);
+		ini_set('display_errors', 1);
 		if (session_check("tempPin"))
 			warning(redirect: "/participate/pin");
 
@@ -76,10 +78,12 @@ class Participate extends Controller
 			if ($phone === "")
 				warninglang("participate.verify.phone.required");
 
-			$validate = validate((object)[
+			$source = (object)[
 				"phone" => $phone,
 				"csrf" => $post->csrf
-			], [
+			];
+
+			$validate = validate($source, [
 				"phone" => ["name" => "Telefon", "required" => true, "min" => 10, "phone" => "true"],
 				"csrf" => ["name" => "token", "required" => true]
 			]);
@@ -102,10 +106,13 @@ class Participate extends Controller
 				$personalId = (int) Personal::existsByEmail($email);
 				$channel = "email";
 			} else {
-				$validate = validate((object)[
+
+				$source = (object)[
 					"phone" => $phone,
 					"csrf" => $post->csrf
-				], [
+				];
+
+				$validate = validate($source, [
 					"phone" => ["name" => "Telefon", "required" => true, "min" => 10, "phone" => "true"],
 					"csrf" => ["name" => "token", "required" => true]
 				]);
