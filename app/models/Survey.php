@@ -20,7 +20,12 @@ final class Survey extends Model
 
         $query = "
             select (
-                select count(DISTINCT answers.personalId) from answers where answers.surveyId = surveys.id and data IS NOT NULL and done = 1
+                select count(DISTINCT CASE
+                    WHEN surveys.anonymous = 1 THEN answers.id
+                    ELSE answers.personalId
+                END)
+                from answers
+                where answers.surveyId = surveys.id and data IS NOT NULL and done = 1
             ) answersCount, 
             surveys.*
             from surveys
@@ -100,31 +105,48 @@ final class Survey extends Model
     public static function generateReportData($survey)
     {
         $questionData = json_decode($survey->data);
-        $answerData = Database::get()
-            ->select("answers.personalId, MAX(answers.id) as maxId, personals.fullname, personals.department")
-            ->from("answers")
-            ->leftJoin("personals", "personals.id = answers.personalId")
-            ->where("surveyId", "=", $survey->id)
-            ->where("done", "=", 1)
-            ->groupBy(["answers.personalId"])
-            ->results();
-        
-        // Her personalId için en son cevabı al
-        $finalAnswerData = [];
-        foreach ($answerData as $row) {
-            $fullAnswer = Database::get()
+        if ((int) $survey->anonymous === 1) {
+            // Anonim anketlerde personalId sabit/boş olabildiği için her yanıtı ayrı katılımcı kabul et.
+            $answerData = Database::get()
+                ->select("answers.id, answers.personalId, answers.data")
                 ->from("answers")
-                ->where("id", "=", $row->maxId)
-                ->result();
-            
-            if ($fullAnswer) {
-                $fullAnswer->fullname = $row->fullname;
-                $fullAnswer->department = $row->department;
-                $finalAnswerData[] = $fullAnswer;
+                ->where("surveyId", "=", $survey->id)
+                ->where("done", "=", 1)
+                ->results();
+
+            foreach ($answerData as $row) {
+                $row->participantKey = $row->id;
+                $row->fullname = null;
+                $row->department = null;
             }
+        } else {
+            $answerData = Database::get()
+                ->select("answers.personalId, MAX(answers.id) as maxId, personals.fullname, personals.department")
+                ->from("answers")
+                ->leftJoin("personals", "personals.id = answers.personalId")
+                ->where("surveyId", "=", $survey->id)
+                ->where("done", "=", 1)
+                ->groupBy(["answers.personalId"])
+                ->results();
+            
+            // Her personalId için en son cevabı al
+            $finalAnswerData = [];
+            foreach ($answerData as $row) {
+                $fullAnswer = Database::get()
+                    ->from("answers")
+                    ->where("id", "=", $row->maxId)
+                    ->result();
+                
+                if ($fullAnswer) {
+                    $fullAnswer->participantKey = $row->personalId;
+                    $fullAnswer->fullname = $row->fullname;
+                    $fullAnswer->department = $row->department;
+                    $finalAnswerData[] = $fullAnswer;
+                }
+            }
+            
+            $answerData = $finalAnswerData;
         }
-        
-        $answerData = $finalAnswerData;
 
         $generatedData = [];
 
@@ -241,7 +263,7 @@ final class Survey extends Model
                     
                     if ($answerText) {
                         $generatedData[$group0][$question->type . "::" . $question->title][$answerText][] = (object) [
-                            "id" => $fValue->personalId,
+                            "id" => $fValue->participantKey ?? $fValue->personalId,
                             "fullname" => $fValue->fullname,
                             "department" => $fValue->department,
                             "value" => $answerValue
@@ -266,7 +288,7 @@ final class Survey extends Model
                         $answerValue = $decodedJson[$slug];
 
                         $generatedData[$group0][$question->type . "::" . $question->title][$answer][] = (object) [
-                            "id" => $fValue->personalId,
+                            "id" => $fValue->participantKey ?? $fValue->personalId,
                             "fullname" => $fValue->fullname,
                             "department" => $fValue->department,
                             "value" => $answerValue
@@ -283,7 +305,7 @@ final class Survey extends Model
             foreach ($data as $answer) {
                 $answerValue = json_decode($answer->data, JSON_OBJECT_AS_ARRAY)[$question->slug];
                 $generatedData[$group0][$question->type . "::" . $question->title][] = (object) [
-                    "id" => $answer->personalId,
+                    "id" => $answer->participantKey ?? $answer->personalId,
                     "fullname" => $answer->fullname,
                     "department" => $answer->department,
                     #"answer" => $answerTitle,
