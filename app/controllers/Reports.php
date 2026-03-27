@@ -95,7 +95,7 @@ class Reports extends Controller
 
 
         $questionData = json_decode($survey->data);
-        $title = ['Sicil No', 'Ad Soyad'];
+        $title = $survey->anonymous ? ['Katılımcı'] : ['Sicil No', 'Ad Soyad'];
 
         foreach ($questionData as $value)
             if ($value->type != "description")
@@ -104,18 +104,28 @@ class Reports extends Controller
         $data["title"] = $title;
 
         #################
-        $participators = Survey::participators($surveyId);
+        if ($survey->anonymous) {
+            $participators = $this->db
+                ->select("id, data")
+                ->from("answers")
+                ->where("surveyId", "=", $surveyId)
+                ->where("done", "=", 1)
+                ->results();
+        } else {
+            $participators = Survey::participators($surveyId);
+        }
 
         foreach ($participators as $key => $participator) {
-            if (!$participator->done)
+            if (!$survey->anonymous && !$participator->done)
                 continue;
 
-            $inline = [
-                $participator->personalId,
-                $participator->fullname
-            ];
+            $inline = $survey->anonymous
+                ? ["Anonim #" . ($key + 1)]
+                : [$participator->personalId, $participator->fullname];
 
             $answerData = json_decode($participator->data, JSON_OBJECT_AS_ARRAY);
+            if (!is_array($answerData))
+                continue;
 
             foreach ($answerData as $answerKey => $answerValue) {
 
@@ -133,10 +143,10 @@ class Reports extends Controller
                     if (!array_key_exists($question->slug, $inline))
                         $inline[$question->slug] = null;
 
-                    $inline[$question->slug] .= " → " . html_entity_decode(strip_tags(trim($question->answers[$answerValue])));
+                    $inline[$question->slug] .= " → " . html_entity_decode(strip_tags(trim($question->answers[$answerValue] ?? "")));
                     $inline[$question->slug] = trim($inline[$question->slug], " → ");
                 } else
-                    $inline[$question->slug] = html_entity_decode(strip_tags(trim($question->type == "textarea" ? $answerValue : $question->answers[$answerValue])));
+                    $inline[$question->slug] = html_entity_decode(strip_tags(trim($question->type == "textarea" ? $answerValue : ($question->answers[$answerValue] ?? ""))));
             }
 
             $data[] = $inline;
