@@ -3,13 +3,15 @@
     isAnswerModalOpened: false,
     types: [],
     recipientType: 'all',
+    legalPhones: '',
     charCount: 0,
     dropIsOpen: false, 
     current: 1,
     activeTab: 'email'
 }" 
 x-on:keydown.escape="isNotificationModalOpened = false"
-x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms') ? 'sms' : activeTab)">
+x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms') ? 'sms' : activeTab)"
+x-effect="if (recipientType === 'legal') { types = types.filter(t => t !== 'email'); if (!types.includes('sms')) types.push('sms'); activeTab = 'sms'; }">
     <h1 class="text-center">{$surveyTitle}</h1>
     <div class="flex justify-between content-between w-full mb-3">
         <div class="inline-flex overflow-hidden relative bg-white border divide-x rounded-lg dark:bg-gray-900 rtl:flex-row-reverse shadow-sm dark:border-gray-700 dark:divide-gray-700">
@@ -116,6 +118,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                                                         </div>
                                                         
                                                         <div class="relative flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-300" 
+                                                            x-show="recipientType !== 'legal'"
                                                             :class="{ 'border-blue-500 bg-blue-50 dark:bg-blue-900/20': types.includes('email') }"
                                                             @click="types = types.includes('email') ? types.filter(t => t !== 'email') : [...types, 'email']">
                                                             <input type="checkbox" value="email" class="hidden" x-model="types">
@@ -137,7 +140,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                                                 <!-- Alıcı Tipi -->
                                                 <div class="mb-6" x-show="types.length > 0" x-transition>
                                                     <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">Alıcı Tipi</label>
-                                                    <div class="grid grid-cols-3 gap-4">
+                                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                                         <label class="relative flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-300" :class="{ 'border-blue-500 bg-blue-50 dark:bg-blue-900/20': recipientType === 'all' }">
                                                             <input type="radio" name="recipientType" value="all" class="sr-only" x-model="recipientType">
                                                             <div class="flex items-center">
@@ -163,6 +166,15 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                                                 </svg>
                                                                 <span class="text-sm font-medium">Kişi</span>
+                                                            </div>
+                                                        </label>
+                                                        <label class="relative flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-300" :class="{ 'border-blue-500 bg-blue-50 dark:bg-blue-900/20': recipientType === 'legal' }">
+                                                            <input type="radio" name="recipientType" value="legal" class="sr-only" x-model="recipientType">
+                                                            <div class="flex items-center">
+                                                                <svg class="w-6 h-6 mr-2 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                                </svg>
+                                                                <span class="text-sm font-medium">Tüzel Kişi</span>
                                                             </div>
                                                         </label>
                                                     </div>
@@ -220,6 +232,14 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                                                                 }' class="hidden">
                                                         <option n:foreach="$personList as $person" value="{$person->id}">{$person->fullname}</option>
                                                     </select>
+                                                </div>
+
+                                                <div class="mb-6 legal-select" x-show="recipientType === 'legal'" x-transition>
+                                                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">Telefon Numaraları</label>
+                                                    <textarea name="legal_phones" rows="4" x-model="legalPhones"
+                                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                        placeholder="Her satıra bir numara veya virgülle ayırarak yazın&#10;Örn: 5321234567, 5339876543"></textarea>
+                                                    <p class="mt-1 text-sm text-gray-500">Tüzel kişi bildirimleri yalnızca SMS ile gönderilir.</p>
                                                 </div>
                                                 
                                                 <div class="mb-6" x-show="types.length > 0" x-transition>
@@ -283,7 +303,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                                                 </button>
                                                 <button type="submit"
                                                     class="inline-flex justify-center rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300"
-                                                    :disabled="types.length === 0 || (types.includes('sms') && (charCount === 0 || charCount > 300))">
+                                                    :disabled="types.length === 0 || (types.includes('sms') && recipientType !== 'legal' && (charCount === 0 || charCount > 300)) || (recipientType === 'legal' && (!legalPhones.trim() || charCount === 0 || charCount > 300))">
                                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                                     </svg>

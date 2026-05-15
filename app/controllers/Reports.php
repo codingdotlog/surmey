@@ -281,8 +281,11 @@ class Reports extends Controller
         if(!in_array("sms", $types) && !in_array("email", $types))
             warning("Lütfen en az bir iletişim türü seçin");
 
-        if(!in_array($post->recipientType, ["all", "department", "individual"]))
+        if(!in_array($post->recipientType, ["all", "department", "individual", "legal"]))
             warning("Lütfen geçerli bir alıcı türü seçin");
+
+        if ($post->recipientType === "legal" && in_array("email", $types))
+            warning("Tüzel kişi bildirimleri yalnızca SMS ile gönderilebilir");
 
         if(in_array("sms", $types) && (!isset($post->sms_message) || empty($post->sms_message)))
             warning("Lütfen SMS mesajı girin");
@@ -290,22 +293,38 @@ class Reports extends Controller
         if(in_array("email", $types) && (!isset($post->email_message) || empty($post->email_message)))
             warning("Lütfen geçerli bir e-posta mesajı girin");
 
-        $query = $this->db->select("fullname, phone1, phone2, email, department")
-            ->from("personals")
-            ->where("status", value: 1)
-            ->where("id", "!=", "0");
+        $contacts = [];
+        $legalPhoneCount = 0;
 
-        if ($post->recipientType === "department") {
-            if (empty($post->recipients))
-                warning("Lütfen en az bir departman seçin");
-            $query->in("department", $post->recipients);
-        } else if ($post->recipientType === "individual") {
-            if (empty($post->recipients))
-                warning("Lütfen en az bir kişi seçin");
-            $query->in("id", $post->recipients);
+        if ($post->recipientType === "legal") {
+            if (!in_array("sms", $types))
+                warning("Tüzel kişi için SMS seçmelisiniz");
+
+            $legalPhones = self::parseManualPhones($post->legal_phones ?? "");
+            if (empty($legalPhones))
+                warning("Lütfen en az bir geçerli telefon numarası girin");
+
+            $legalPhoneCount = count($legalPhones);
+            foreach ($legalPhones as $phone)
+                $contacts[] = (object) ["phone1" => $phone, "phone2" => null, "email" => null];
+        } else {
+            $query = $this->db->select("fullname, phone1, phone2, email, department")
+                ->from("personals")
+                ->where("status", value: 1)
+                ->where("id", "!=", "0");
+
+            if ($post->recipientType === "department") {
+                if (empty($post->recipients))
+                    warning("Lütfen en az bir departman seçin");
+                $query->in("department", $post->recipients);
+            } else if ($post->recipientType === "individual") {
+                if (empty($post->recipients))
+                    warning("Lütfen en az bir kişi seçin");
+                $query->in("id", $post->recipients);
+            }
+
+            $contacts = $query->results();
         }
-
-        $contacts = $query->results();
         #echo $this->db->lastQuery();
 
         $success = [];
@@ -321,6 +340,9 @@ class Reports extends Controller
                 if (!empty($contact->phone2))
                     $messages[] = ["no" => $contact->phone2, "msg" => $post->sms_message];
             }
+
+            if (empty($messages))
+                warning("SMS gönderilecek geçerli telefon numarası bulunamadı");
 
             $result = \SmsHelper::send($messages);
             if ($result->code == 0)
@@ -343,7 +365,30 @@ class Reports extends Controller
         if (!empty($errors)) {
             warning(implode("<br>", $errors));
         } else {
-            success(implode("<br>", $success). "<br> " . count($contacts) . " kişiye başarıyla gönderildi.");
+            $recipientLabel = $post->recipientType === "legal"
+                ? $legalPhoneCount . " numaraya"
+                : count($contacts) . " kişiye";
+            success(implode("<br>", $success). "<br> " . $recipientLabel . " başarıyla gönderildi.");
         }
+    }
+
+    private static function parseManualPhones(string $input): array
+    {
+        $parts = preg_split('/[\s,;]+/', trim($input), -1, PREG_SPLIT_NO_EMPTY);
+        $phones = [];
+
+        foreach ($parts as $raw) {
+            $digits = preg_replace('/\D/', '', $raw);
+
+            if (strlen($digits) === 12 && str_starts_with($digits, '90'))
+                $digits = substr($digits, 2);
+            elseif (strlen($digits) === 11 && str_starts_with($digits, '0'))
+                $digits = substr($digits, 1);
+
+            if (strlen($digits) === 10 && str_starts_with($digits, '5'))
+                $phones[] = $digits;
+        }
+
+        return array_values(array_unique($phones));
     }
 }
