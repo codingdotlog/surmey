@@ -95,7 +95,18 @@ class Reports extends Controller
 
 
         $questionData = json_decode($survey->data);
-        $title = $survey->anonymous ? ['Katılımcı'] : ['Sicil No', 'Ad Soyad'];
+
+        // Excel: anket bayrağından bağımsız — cevaplarda personalId varsa sicil/ad soyad göster
+        $identifiedAnswerCount = (int) $this->db
+            ->select("count(id)")
+            ->from("answers")
+            ->where("surveyId", "=", $surveyId)
+            ->where("done", "=", 1)
+            ->where("personalId", ">", 0)
+            ->first();
+
+        $exportWithIdentity = $identifiedAnswerCount > 0;
+        $title = $exportWithIdentity ? ['Sicil No', 'Ad Soyad'] : ['Katılımcı'];
 
         foreach ($questionData as $value)
             if ($value->type != "description")
@@ -104,24 +115,27 @@ class Reports extends Controller
         $data["title"] = $title;
 
         #################
-        if ($survey->anonymous) {
+        if ($exportWithIdentity) {
+            $participators = Survey::participators($surveyId);
+        } else {
             $participators = $this->db
                 ->select("id, data")
                 ->from("answers")
                 ->where("surveyId", "=", $surveyId)
                 ->where("done", "=", 1)
                 ->results();
-        } else {
-            $participators = Survey::participators($surveyId);
         }
 
         foreach ($participators as $key => $participator) {
-            if (!$survey->anonymous && !$participator->done)
+            if ($exportWithIdentity && !$participator->done)
                 continue;
 
-            $inline = $survey->anonymous
-                ? ["Anonim #" . ($key + 1)]
-                : [$participator->personalId, $participator->fullname];
+            if ($exportWithIdentity) {
+                $fullname = $participator->fullname ?? $participator->fullName ?? '';
+                $inline = [$participator->personalId, $fullname];
+            } else {
+                $inline = ["Anonim #" . ($key + 1)];
+            }
 
             $answerData = json_decode($participator->data, JSON_OBJECT_AS_ARRAY);
             if (!is_array($answerData))
