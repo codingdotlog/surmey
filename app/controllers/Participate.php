@@ -293,31 +293,30 @@ class Participate extends Controller
 			if ($value->type == "description")
 				continue;
 
-			// Koşullu soru kontrolü - tüm soru tipleri için
-			$index = -1;
+			// Koşullu soru kontrolü - bir cevap seçeneğine birden fazla soru bağlanabilir
 			$hasCondition = false;
+			$conditionMet = false;
 
 			foreach ($formData as $dkey => $dvalue) {
-				// Eğer bu soru koşula sahipse
-				if (!empty($dvalue->conditions)) {
-					foreach ($dvalue->conditions as $i => $p) {
-						if ($p->value == $value->slug) {
-							$hasCondition = true; // Bu soru bir koşula bağlı
-							$parentAnswer = $post->{$dvalue->slug} ?? null;
+				if (empty($dvalue->conditions))
+					continue;
 
-							if ($p->index == $parentAnswer) {
-								$index = $i;
-								break 2; // iki foreach'ten çık
-							}
-						}
+				foreach ($dvalue->conditions as $p) {
+					if ($p->value != $value->slug)
+						continue;
+
+					$hasCondition = true;
+					$parentAnswer = $post->{$dvalue->slug} ?? null;
+
+					if ((string) $p->index === (string) $parentAnswer) {
+						$conditionMet = true;
+						break 2;
 					}
 				}
 			}
 
-			// Eğer koşula bağlıysa ve koşul sağlanmamışsa bu soruyu atla
-			if ($hasCondition && $index == -1) {
+			if ($hasCondition && ! $conditionMet)
 				continue;
-			}
 
 			switch ($value->type) {
 				case "radio":

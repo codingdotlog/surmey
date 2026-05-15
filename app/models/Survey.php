@@ -102,6 +102,27 @@ final class Survey extends Model
             ->first();
     }
 
+    /** Koşullu soru: en az bir bağlı cevap seçeneği eşleşiyorsa görünür sayılır */
+    public static function conditionalAnswerVisible(string $questionSlug, array $decodedJson, array $questionData): bool
+    {
+        $hasCondition = false;
+
+        foreach ($questionData as $parentQ) {
+            foreach ($parentQ->conditions ?? [] as $cond) {
+                if ($cond->value != $questionSlug)
+                    continue;
+
+                $hasCondition = true;
+                $parentAnswer = $decodedJson[$parentQ->slug] ?? null;
+
+                if ((string) $cond->index === (string) $parentAnswer)
+                    return true;
+            }
+        }
+
+        return ! $hasCondition;
+    }
+
     public static function generateReportData($survey)
     {
         $questionData = json_decode($survey->data);
@@ -169,29 +190,11 @@ final class Survey extends Model
                 continue;
             }
 
-            // Koşullu soru kontrolü - bu soru koşula bağlı mı?
-            $hasCondition = false;
-            $parentQuestion = null;
-            $parentAnswerIndex = null;
-            
-            foreach ($questionData as $parentQ) {
-                if (!empty($parentQ->conditions)) {
-                    foreach ($parentQ->conditions as $cond) {
-                        if ($cond->value == $question->slug) {
-                            $hasCondition = true;
-                            $parentQuestion = $parentQ;
-                            $parentAnswerIndex = $cond->index;
-                            break 2;
-                        }
-                    }
-                }
-            }
-
             $group0 = $groups[$groupIndex];
             
             // Radio için tüm katılımcıları döndüren fonksiyon
-            $searchAll = function () use ($question, $answerData, $hasCondition, $parentQuestion, $parentAnswerIndex) {
-                return array_filter($answerData, function ($aw_V, $aw_K) use ($question, $hasCondition, $parentQuestion, $parentAnswerIndex) {
+            $searchAll = function () use ($question, $answerData, $questionData) {
+                return array_filter($answerData, function ($aw_V, $aw_K) use ($question, $questionData) {
                     if(!$aw_V || !$aw_V->data)
                         return false;
 
@@ -199,22 +202,16 @@ final class Survey extends Model
                     if (! $decodedJson)
                         return false;
 
-                    // Koşullu soru kontrolü - eğer bu soru koşula bağlıysa, parent sorunun cevabını kontrol et
-                    if ($hasCondition && $parentQuestion) {
-                        $parentAnswer = $decodedJson[$parentQuestion->slug] ?? null;
-                        if ($parentAnswer != $parentAnswerIndex) {
-                            return false; // Koşul sağlanmamış, bu cevabı dahil etme
-                        }
-                    }
+                    if (! self::conditionalAnswerVisible($question->slug, $decodedJson, $questionData))
+                        return false;
 
-                    // Bu soruyu cevaplayan katılımcıları döndür
                     return array_key_exists($question->slug, $decodedJson);
 
                 }, ARRAY_FILTER_USE_BOTH);
             };
             
-            $search = function ($k) use ($question, $answerData, $hasCondition, $parentQuestion, $parentAnswerIndex) {
-                return array_filter($answerData, function ($aw_V, $aw_K) use ($question, $k, $hasCondition, $parentQuestion, $parentAnswerIndex) {
+            $search = function ($k) use ($question, $answerData, $questionData) {
+                return array_filter($answerData, function ($aw_V, $aw_K) use ($question, $k, $questionData) {
                     if(!$aw_V || !$aw_V->data)
                         return;
 
@@ -222,13 +219,8 @@ final class Survey extends Model
                     if (! $decodedJson)
                         return;
 
-                    // Koşullu soru kontrolü - eğer bu soru koşula bağlıysa, parent sorunun cevabını kontrol et
-                    if ($hasCondition && $parentQuestion) {
-                        $parentAnswer = $decodedJson[$parentQuestion->slug] ?? null;
-                        if ($parentAnswer != $parentAnswerIndex) {
-                            return false; // Koşul sağlanmamış, bu cevabı dahil etme
-                        }
-                    }
+                    if (! self::conditionalAnswerVisible($question->slug, $decodedJson, $questionData))
+                        return false;
 
                     $s = $question->type == "checkbox" ? $question->slug . $k : $question->slug;
 

@@ -126,32 +126,73 @@ $(function () {
         `;
     }
 
-    $(document).on("click", "#condition-dropdown ul li", (e) => {
-        e.preventDefault()
+    const parseConditionSlugs = (raw) => {
+        if (!raw || raw === "none")
+            return [];
 
-        const question = $(e.currentTarget).parents("#question")
-        const answerIndex = $(e.currentTarget).parents("#answer").index()
-        const val = $(e.currentTarget).children("input").val()
-
-        var conditions = JSON.parse(question.attr("conditions") ?? "[]")
-
-        arrayIndex = conditions.findIndex(p => p.index == answerIndex)
-        if (arrayIndex != -1) {
-            if (val == "none")
-                conditions.splice(arrayIndex, 1)
-            else
-                conditions[arrayIndex].value = val;
+        try {
+            const parsed = JSON.parse(decodeURIComponent(raw));
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+            return [raw];
         }
-        else
-            conditions.push({
-                index: answerIndex,
-                value: val
-            })
+    };
 
+    const getConditionSlugs = ($input) => {
+        const multi = $input.attr("data-conditions");
+        if (multi !== undefined)
+            return parseConditionSlugs(multi);
 
-        question.attr("conditions", JSON.stringify(conditions))
-        $(e.currentTarget).parents("#condition-dropdown").addClass("hidden")
-    })
+        const single = $input.data("condition");
+        if (!single || single === "none")
+            return [];
+
+        return [single];
+    };
+
+    const stripHtml = (html) => {
+        const el = document.createElement("div");
+        el.innerHTML = html;
+        return (el.textContent || el.innerText || "").trim();
+    };
+
+    const conditionalTarget = (slug) => $(`.js-conditional-target[data-slug='${slug}']`);
+
+    $(document).on("change", "#condition-dropdown input.condition-target", (e) => {
+        e.stopPropagation();
+
+        const $input = $(e.currentTarget);
+        const question = $input.closest("#question");
+        const answerIndex = parseInt($input.closest("ul").data("answer-index"), 10);
+        const val = $input.val();
+
+        let conditions = JSON.parse(question.attr("conditions") ?? "[]");
+        const existingIdx = conditions.findIndex(p => p.index == answerIndex && p.value == val);
+
+        if ($input.prop("checked")) {
+            if (existingIdx === -1)
+                conditions.push({ index: answerIndex, value: val });
+        } else if (existingIdx !== -1) {
+            conditions.splice(existingIdx, 1);
+        }
+
+        question.attr("conditions", JSON.stringify(conditions));
+    });
+
+    $(document).on("click", ".condition-clear-all", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dropdown = $(e.currentTarget).closest("#condition-dropdown");
+        const question = dropdown.closest("#question");
+        const answerIndex = parseInt(dropdown.find("ul").data("answer-index"), 10);
+
+        let conditions = JSON.parse(question.attr("conditions") ?? "[]");
+        conditions = conditions.filter(p => p.index != answerIndex);
+        question.attr("conditions", JSON.stringify(conditions));
+
+        dropdown.find("input.condition-target").prop("checked", false);
+    });
 
     $(document).on("click", "#condition", (e) => {
 
@@ -173,12 +214,12 @@ $(function () {
         const questions = generate()
         const ul = dropdown.find("ul")
         ul.html("")
+        ul.attr("data-answer-index", parentIndex)
         ul.append(`
-            <li>
-                <input checked type="radio" id="first-condition-element" name="condition-${parentIndex}" value="none" class="hidden peer" required />
-                <label for="first-condition-element" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border border-transparent rounded-lg cursor-pointer dark:hover:text-gray-300 dark:peer-checked:text-blue-500 peer-checked:border-blue-600 peer-checked:text-blue-600 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:bg-gray-800 dark:hover:bg-gray-700">                           
-                Seçili Değil
-                </label>
+            <li class="border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
+                <button type="button" class="condition-clear-all w-full p-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
+                    Tüm bağlantıları temizle
+                </button>
             </li>`)
 
         const question = $(e.currentTarget).parents("#question");
@@ -187,15 +228,19 @@ $(function () {
         var conditions = JSON.parse(question.attr("conditions") ?? "[]")
 
         for (const [k, v] of Object.entries(questions)) {
-            if (v.type == "description" || questionSlug == v.slug)
+            if (questionSlug == v.slug)
                 continue;
 
+            const inputId = `cond-${questionSlug}-${parentIndex}-${v.slug}`;
             var hasChecked = conditions.findIndex(p => p.index == parentIndex && p.value == v.slug) > -1;
+            const label = v.type === "description"
+                ? `[Açıklama] ${stripHtml((v.title || "").replaceAll('\\\"', '"')) || "Bilgi metni"}`
+                : stripHtml((v.title || "").replaceAll('\\\"', '"')) || v.slug;
 
             ul.append(`<li>
-                <input type="radio" id="${v.slug}" name="condition-${parentIndex}" value="${v.slug}" class="hidden peer" ${hasChecked ? "checked" : ""} required />
-                <label for="${v.slug}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border-2 border-transparent rounded-lg cursor-pointer dark:hover:text-gray-300 dark:peer-checked:text-blue-500 peer-checked:border-blue-600 peer-checked:text-blue-600 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:bg-gray-800 dark:hover:bg-gray-700">                           
-                ${v.title}
+                <input type="checkbox" id="${inputId}" value="${v.slug}" class="condition-target hidden peer" ${hasChecked ? "checked" : ""} />
+                <label for="${inputId}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border-2 border-transparent rounded-lg cursor-pointer dark:hover:text-gray-300 dark:peer-checked:text-blue-500 peer-checked:border-blue-600 peer-checked:text-blue-600 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:bg-gray-800 dark:hover:bg-gray-700">                           
+                ${label}
                 </label>
             </li>`)
         }
@@ -369,36 +414,39 @@ $(function () {
     $(document).on("change", "[data-change-tracker]", (e) => {
         e.preventDefault()
 
-        $this = $(e.currentTarget)
-        $condition = $this.data("condition");
+        const $this = $(e.currentTarget);
+        const parentBlock = $this.closest("[data-slug]");
 
-        const inputType = $this.attr("type");
-        
-        if (inputType == "radio") {
-            const currentQuestion = $this.parents("[data-slug]");
-            
-            currentQuestion.find("input[data-change-tracker]").each((index, inputElement) => {
-                const $input = $(inputElement);
-                const inputCondition = $input.data("condition");
-                
-                if (inputCondition && inputCondition !== "none") {
-                    const conditionDiv = $(`[data-slug='${inputCondition}']`);
-                    conditionDiv.hide();
-                    conditionDiv.find("input").prop('checked', false);
-                }
-            });
-        }
-       
-        if ($condition && $condition !== "none") {
-            $(`[data-slug='${$condition}']`).show()
-        }
+        const allPossibleSlugs = new Set();
+        parentBlock.find("input[data-change-tracker]").each((index, inputElement) => {
+            getConditionSlugs($(inputElement)).forEach(slug => allPossibleSlugs.add(slug));
+        });
+
+        allPossibleSlugs.forEach(slug => {
+            conditionalTarget(slug).hide().find("input").prop("checked", false);
+        });
+
+        const visibleSlugs = new Set();
+        parentBlock.find("input[data-change-tracker]").each((index, inputElement) => {
+            const $input = $(inputElement);
+            if ($input.attr("type") === "radio" && !$input.prop("checked"))
+                return;
+            if ($input.attr("type") === "checkbox" && !$input.prop("checked"))
+                return;
+
+            getConditionSlugs($input).forEach(slug => visibleSlugs.add(slug));
+        });
+
+        visibleSlugs.forEach(slug => {
+            conditionalTarget(slug).show();
+        });
     })
 
     const renderFormEntry = (element) => {
         let content = "";
         if (element.type != "description")
             content += `
-                <div data-slug="${element.slug}" class="rounded-lg bg-slate-50/30 border mb-3 border-gray-200 shadow-sm p-4 dark:border-gray-600 dark:bg-slate-900"> 
+                <div data-slug="${element.slug}" class="js-conditional-target rounded-lg bg-slate-50/30 border mb-3 border-gray-200 shadow-sm p-4 dark:border-gray-600 dark:bg-slate-900">
             `;
 
         if (element.type != "description")
@@ -422,21 +470,26 @@ $(function () {
             case "description":
                 const types = ["info", "warning", "success", "danger"];
                 content += `
-                    <div data-slug="${element.slug}" class="my-3 shadow-sm text-center rounded-md p-3 text-md alert-${types[element.subType]}">
+                    <div data-slug="${element.slug}" class="js-conditional-target my-3 shadow-sm text-center rounded-md p-3 text-md alert-${types[element.subType]}">
                         ${linkify(element.title.replaceAll('\\\"', '"'))}
                     </div>
                 `;
                 break;
         }
 
-        element.answers.forEach((answer, i) => {
+        if (element.type === "radio" || element.type === "checkbox")
+        (element.answers || []).forEach((answer, i) => {
 
-            const arrayIndex = !element.hasOwnProperty("conditions") ? -1 : element.conditions.findIndex(p => p.index == i)
-            const hasCondition = arrayIndex > -1 ? element.conditions[arrayIndex].value : "none"
+            const linkedSlugs = (element.conditions || [])
+                .filter(p => p.index == i)
+                .map(p => p.value);
+            const conditionsAttr = linkedSlugs.length
+                ? encodeURIComponent(JSON.stringify(linkedSlugs))
+                : "none";
 
             content += `
                   <div class="flex w-fit items-center mb-2 mx-1">
-                      <input data-condition="${hasCondition}" data-change-tracker="true" id="link-${element.slug + i}" name="${element.type == "radio" ? element.slug : element.slug + i}" type="${element.type}" value="${i}" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                      <input data-conditions="${conditionsAttr}" data-change-tracker="true" id="link-${element.slug + i}" name="${element.type == "radio" ? element.slug : element.slug + i}" type="${element.type}" value="${i}" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
                       <label for="link-${element.slug + i}" class="ml-2 text-sm font-normal text-gray-900 dark:text-gray-300" ${element.isHorizontal ? 'style="min-inline-size: max-content;"' : ''}>${linkify(answer.replaceAll('\\\"', '"'))}</label>
                   </div>
               `;
@@ -491,7 +544,7 @@ $(function () {
         )
 
         data.forEach(element => {
-            element.conditions.forEach(condition => $(`.rounded-lg[data-slug='${condition.value}']`).hide())
+            (element.conditions || []).forEach(condition => conditionalTarget(condition.value).hide())
         })
     })
 

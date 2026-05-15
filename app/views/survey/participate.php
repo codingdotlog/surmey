@@ -41,7 +41,9 @@
                             data.forEach(element => $this.append(renderFormEntry(element)))
 
                             data.forEach(element => {
-                                element.conditions.forEach(condition => $("[data-slug='" + condition.value + "']").hide())
+                                (element.conditions || []).forEach(condition => {
+                                    $(".generated .js-conditional-target[data-slug='" + condition.value + "']").hide()
+                                })
                             })
                         })
                     </script>
