@@ -96,82 +96,69 @@ class Reports extends Controller
 
         $questionData = json_decode($survey->data);
 
-        // Excel: anket bayrağından bağımsız — cevaplarda personalId varsa sicil/ad soyad göster
-        $identifiedAnswerCount = (int) $this->db
-            ->select("count(id)")
-            ->from("answers")
-            ->where("surveyId", "=", $surveyId)
-            ->where("done", "=", 1)
-            ->where("personalId", ">", 0)
-            ->first();
+        $isAnonymousSurvey = (int) $survey->anonymous === 1;
 
-        $exportWithIdentity = $identifiedAnswerCount > 0;
-        $title = $exportWithIdentity ? ['Sicil No', 'Ad Soyad'] : ['Katılımcı'];
-
-        foreach ($questionData as $value)
+        $questions = [];
+        foreach ($questionData as $value) {
             if ($value->type != "description")
-                $title[$value->slug] = html_entity_decode(strip_tags(trim($value->title)));
+                $questions[] = $value;
+        }
 
-        $data["title"] = $title;
+        $titleRow = $isAnonymousSurvey ? ['Katılımcı'] : ['Sicil No', 'Ad Soyad'];
+        foreach ($questions as $q)
+            $titleRow[] = html_entity_decode(strip_tags(trim($q->title)));
 
-        #################
-        if ($exportWithIdentity) {
-            $participators = Survey::participators($surveyId);
-        } else {
+        $rows = [$titleRow];
+
+        if ($isAnonymousSurvey) {
             $participators = $this->db
                 ->select("id, data")
                 ->from("answers")
                 ->where("surveyId", "=", $surveyId)
                 ->where("done", "=", 1)
+                ->orderBy("id", "ASC")
+                ->results();
+        } else {
+            // Kimlikli anket: her cevabı personals ile eşleştir (asla Anonim etiketi kullanma)
+            $participators = $this->db
+                ->select("answers.id, answers.personalId, answers.data, answers.done, personals.fullname")
+                ->from("answers")
+                ->leftJoin("personals", "personals.id = answers.personalId")
+                ->where("answers.surveyId", "=", $surveyId)
+                ->where("answers.done", "=", 1)
+                ->orderBy("answers.id", "ASC")
                 ->results();
         }
 
-        foreach ($participators as $key => $participator) {
-            if ($exportWithIdentity && !$participator->done)
-                continue;
-
-            if ($exportWithIdentity) {
-                $fullname = $participator->fullname ?? $participator->fullName ?? '';
-                $inline = [$participator->personalId, $fullname];
+        $anonIndex = 0;
+        foreach ($participators as $participator) {
+            if ($isAnonymousSurvey) {
+                $anonIndex++;
+                $row = ["Anonim #" . $anonIndex];
             } else {
-                $inline = ["Anonim #" . ($key + 1)];
+                $row = [
+                    $participator->personalId,
+                    $participator->fullname ?? $participator->fullName ?? ''
+                ];
             }
 
-            $answerData = json_decode($participator->data, JSON_OBJECT_AS_ARRAY);
-            if (!is_array($answerData))
-                continue;
+            $answerData = json_decode($participator->data ?? '', JSON_OBJECT_AS_ARRAY);
+            if (! is_array($answerData))
+                $answerData = [];
 
-            foreach ($answerData as $answerKey => $answerValue) {
-
-                $question = null;
-
-                foreach ($questionData as $k => $v) {
-                    if (str_starts_with($answerKey, $v->slug))
-                        $question = $v;
-                }
-
-                if (empty($v) || !$question)
-                    continue;
-
-                if ($question->type == "checkbox") {
-                    if (!array_key_exists($question->slug, $inline))
-                        $inline[$question->slug] = null;
-
-                    $inline[$question->slug] .= " → " . html_entity_decode(strip_tags(trim($question->answers[$answerValue] ?? "")));
-                    $inline[$question->slug] = trim($inline[$question->slug], " → ");
-                } else
-                    $inline[$question->slug] = html_entity_decode(strip_tags(trim($question->type == "textarea" ? $answerValue : ($question->answers[$answerValue] ?? ""))));
+            foreach ($questions as $question) {
+                $row[] = self::formatAnswerCell($question, $answerData);
             }
 
-            $data[] = $inline;
+            $rows[] = $row;
         }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Veriler');
-        $sheet->fromArray($data);
+        $sheet->fromArray($rows);
 
-        for ($colIndex = 0; $colIndex <= count($title); $colIndex++) {
+        for ($colIndex = 0; $colIndex < count($titleRow); $colIndex++) {
             $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
             $cellCoordinate = $columnLetter . '1'; // 1. satır
 
@@ -370,6 +357,28 @@ class Reports extends Controller
                 : count($contacts) . " kişiye";
             success(implode("<br>", $success). "<br> " . $recipientLabel . " başarıyla gönderildi.");
         }
+    }
+
+    private static function formatAnswerCell(object $question, array $answerData): string
+    {
+        $parts = [];
+
+        foreach ($answerData as $answerKey => $answerValue) {
+            if (! str_starts_with((string) $answerKey, $question->slug))
+                continue;
+
+            if ($question->type == "checkbox") {
+                $label = $question->answers[$answerValue] ?? '';
+                if ($label !== '')
+                    $parts[] = html_entity_decode(strip_tags(trim($label)));
+            } elseif ($question->type == "textarea") {
+                return html_entity_decode(strip_tags(trim((string) $answerValue)));
+            } else {
+                return html_entity_decode(strip_tags(trim($question->answers[$answerValue] ?? '')));
+            }
+        }
+
+        return implode(' → ', $parts);
     }
 
     private static function parseManualPhones(string $input): array
