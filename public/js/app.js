@@ -365,7 +365,6 @@ $(function () {
         formData = JSON.parse(formData);
         $("input[name=title]").val(formData.title);
         $("input[name=verifyPhone]").prop("checked", formData.verifyPhone);
-        $("input[name=anonymous]").prop("checked", formData.anonymous);
 
         $("#cover-photo-result").css(
             "background-image",

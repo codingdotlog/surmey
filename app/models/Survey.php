@@ -21,7 +21,7 @@ final class Survey extends Model
         $query = "
             select (
                 select count(DISTINCT CASE
-                    WHEN surveys.anonymous = 1 THEN answers.id
+                    WHEN surveys.verifyPhone = 0 THEN answers.id
                     ELSE answers.personalId
                 END)
                 from answers
@@ -126,7 +126,7 @@ final class Survey extends Model
     public static function generateReportData($survey)
     {
         $questionData = json_decode($survey->data);
-        if ((int) $survey->anonymous === 1) {
+        if (!$survey->verifyPhone) {
             // Anonim anketlerde personalId sabit/boş olabildiği için her yanıtı ayrı katılımcı kabul et.
             $answerData = Database::get()
                 ->select("answers.id, answers.personalId, answers.data")

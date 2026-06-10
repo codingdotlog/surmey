@@ -57,7 +57,6 @@ class Surveys extends Controller
             warninglang("csrf.error");
 
         $post->verifyPhone = (int) isset($post->verifyPhone);
-        $post->anonymous = (int)(isset($post->anonymous) ? $post->anonymous : 0);
 
         $input = Request::files();
 
@@ -132,7 +131,6 @@ class Surveys extends Controller
             "about" => $post->about,
             "data"  => $post->data,
             "verifyPhone" => $post->verifyPhone,
-            "anonymous" => $post->anonymous
         ];
 
         if(isset($post->photo))

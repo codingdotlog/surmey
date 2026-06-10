@@ -51,13 +51,13 @@ class Reports extends Controller
             "surveyTitle" => $survey->title,
             "user" => User::info(),
             "data" => $result,
-            "anonymous" => $survey->anonymous,
             "surveyId" => $surveyId,
             "departmentList" => $departmentList,
-            "personList" => $personList
+            "personList" => $personList,
+            "anonymous" => !$survey->verifyPhone
         ];
 
-        if (!$survey->anonymous)
+        if ($survey->verifyPhone)
             $args["participators"] = Survey::participators($surveyId);
 
         $this->view("main", "reports", lang("reports"), $args);
@@ -96,7 +96,7 @@ class Reports extends Controller
 
         $questionData = json_decode($survey->data);
 
-        $isAnonymousSurvey = (int) $survey->anonymous === 1;
+        $isAnonymousSurvey = !$survey->verifyPhone;
 
         $questions = [];
         foreach ($questionData as $value) {
