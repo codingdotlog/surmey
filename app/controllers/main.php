@@ -199,9 +199,9 @@ class Main extends Controller
         if (!$survey->verifyPhone) {
             session_set("surveySlug", $slug);
             session_set("surveyId", $survey->id);
-            /*session_set("participator", (object)[
+            session_set("participator", (object)[
                 "personalId" => 0
-            ]);*/
+            ]);
         }
         
         if ($survey->verifyPhone && !session_check("user")) {
