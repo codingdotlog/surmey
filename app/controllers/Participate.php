@@ -277,8 +277,8 @@ class Participate extends Controller
 
 		$user = session_get("participator");
 		if ($survey->verifyPhone) {
-			if (Participator::checkSurveyIsParticipated($user->personalId, true))
-				warning("Bu anketi daha önce zaten cevapladınız!");
+			if (Participator::checkSurveyIsParticipated($surveyId, (string) $user->personalId, true))
+				warninglang("participate.already.answered");
 		}
 
 		$post = Request::post();
@@ -289,38 +289,98 @@ class Participate extends Controller
 		
 
 		$formData = json_decode($survey->data);
-		foreach ($formData as $key => $value) {
-			if ($value->type == "description")
+		$slugToQuestion = [];
+		$slugToSection = [];
+		$sectionSlugs = [];
+		$activeSectionSlug = null;
+		foreach ($formData as $q) {
+			if (! isset($q->slug))
 				continue;
+			$slugToQuestion[$q->slug] = $q;
+			if ($q->type === "section") {
+				$activeSectionSlug = $q->slug;
+				$sectionSlugs[$q->slug] = true;
+				$slugToSection[$q->slug] = $q->slug;
+				continue;
+			}
+			$slugToSection[$q->slug] = $activeSectionSlug;
+		}
 
-			// Koşullu soru kontrolü - tüm soru tipleri için
-			$index = -1;
-			$hasCondition = false;
+		$isConditionSatisfied = function ($parentQ, $cond) use ($post) {
+			if (! $parentQ || ! $cond)
+				return false;
+			$parentSlug = $parentQ->slug ?? "";
+			if ($parentSlug === "")
+				return false;
+			$expected = (string) ($cond->index ?? "");
+			if ($parentQ->type === "radio" || $parentQ->type === "select") {
+				$actual = isset($post->{$parentSlug}) ? (string) $post->{$parentSlug} : "";
+				return $actual !== "" && $actual === $expected;
+			}
+			if ($parentQ->type === "checkbox") {
+				$key = $parentSlug . $expected;
+				return isset($post->{$key});
+			}
+			return false;
+		};
 
-			foreach ($formData as $dkey => $dvalue) {
-				// Eğer bu soru koşula sahipse
-				if (!empty($dvalue->conditions)) {
-					foreach ($dvalue->conditions as $i => $p) {
-						if ($p->value == $value->slug) {
-							$hasCondition = true; // Bu soru bir koşula bağlı
-							$parentAnswer = $post->{$dvalue->slug} ?? null;
+		$isSlugVisible = function ($slug) use ($formData, $slugToSection, $sectionSlugs, $isConditionSatisfied) {
+			if (! $slug)
+				return true;
 
-							if ($p->index == $parentAnswer) {
-								$index = $i;
-								break 2; // iki foreach'ten çık
-							}
-						}
-					}
+			$directRules = [];
+			foreach ($formData as $parentQ) {
+				if (empty($parentQ->conditions))
+					continue;
+				foreach ($parentQ->conditions as $cond) {
+					if (($cond->value ?? null) == $slug)
+						$directRules[] = [$parentQ, $cond];
 				}
 			}
-
-			// Eğer koşula bağlıysa ve koşul sağlanmamışsa bu soruyu atla
-			if ($hasCondition && $index == -1) {
-				continue;
+			if (! empty($directRules)) {
+				$ok = false;
+				foreach ($directRules as [$pQ, $cond]) {
+					if ($isConditionSatisfied($pQ, $cond)) {
+						$ok = true;
+						break;
+					}
+				}
+				if (! $ok)
+					return false;
 			}
+
+			$sectionSlug = $slugToSection[$slug] ?? null;
+			if (! $sectionSlug || ! isset($sectionSlugs[$sectionSlug]) || $sectionSlug === $slug)
+				return true;
+
+			$sectionRules = [];
+			foreach ($formData as $parentQ) {
+				if (empty($parentQ->conditions))
+					continue;
+				foreach ($parentQ->conditions as $cond) {
+					if (($cond->value ?? null) == $sectionSlug)
+						$sectionRules[] = [$parentQ, $cond];
+				}
+			}
+			if (empty($sectionRules))
+				return true;
+
+			foreach ($sectionRules as [$pQ, $cond]) {
+				if ($isConditionSatisfied($pQ, $cond))
+					return true;
+			}
+			return false;
+		};
+
+		foreach ($formData as $key => $value) {
+			if ($value->type == "description" || $value->type == "section")
+				continue;
+			if (! $isSlugVisible($value->slug))
+				continue;
 
 			switch ($value->type) {
 				case "radio":
+				case "sentiment_scale":
 					$rules[$value->slug] = [
 						"name" => $value->title,
 						#"required" => $value->isRequired,
@@ -344,7 +404,7 @@ class Participate extends Controller
 						$validate2 = ! in_array(true, $actions);
 
 						if ($validate2)
-							$errors[] = $value->title . " sorusunu cevaplayınız!";
+							$errors[] = lang("survey.validation.checkbox_required", strip_tags($value->title));
 					}
 
 					break;
@@ -360,6 +420,83 @@ class Participate extends Controller
 						$rules[$value->slug]["required"] = $value->isRequired;
 
 					break;
+
+				case "short_text":
+					$maxLen = isset($value->maxLength) ? (int) $value->maxLength : 255;
+					if ($maxLen < 1)
+						$maxLen = 255;
+					if ($maxLen > 4000)
+						$maxLen = 4000;
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+						"max" => $maxLen,
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "email":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+						"max" => 255,
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "url":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+						"max" => 2048,
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "phone":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+						"max" => 32,
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "date":
+				case "time":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+						"max" => 32,
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "number":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "select":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+						"min" => 0,
+						"max" => max(0, count($value->answers) - 1),
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
+
+				case "scale":
+					$rules[$value->slug] = [
+						"name" => $value->title . "<br>",
+					];
+					if ($value->isRequired)
+						$rules[$value->slug]["required"] = true;
+					break;
 			}
 		}
 
@@ -370,6 +507,61 @@ class Participate extends Controller
 
 		if ($validate)
 			warning($validate);
+
+		foreach ($formData as $value) {
+			if ($value->type === "description" || $value->type === "section")
+				continue;
+			if (! $isSlugVisible($value->slug))
+				continue;
+			$slug = $value->slug;
+			if ($value->type === "email") {
+				$raw = isset($post->$slug) ? trim((string) $post->$slug) : "";
+				if ($raw !== "" && ! validate_email($raw))
+					warning(lang("validation.email_error"));
+			}
+			if ($value->type === "url") {
+				$raw = isset($post->$slug) ? trim((string) $post->$slug) : "";
+				if ($raw !== "" && ! filter_var($raw, FILTER_VALIDATE_URL))
+					warning(lang("validation.url.error", strip_tags($value->title)));
+			}
+			if ($value->type === "phone") {
+				$raw = isset($post->$slug) ? trim((string) $post->$slug) : "";
+				if ($raw === "")
+					continue;
+				$digits = preg_replace('/\D+/', '', $raw);
+				if ($digits !== "" && strlen($digits) < 10)
+					warning(lang("validation.phone.error", strip_tags($value->title)));
+			}
+			if ($value->type === "number") {
+				$raw = isset($post->$slug) ? trim((string) $post->$slug) : "";
+				if ($raw === "")
+					continue;
+				if (! is_numeric($raw))
+					warning(lang("survey.validation.number_range", strip_tags($value->title)));
+				$num = 0 + $raw;
+				if (isset($value->numMin) && is_numeric($value->numMin) && $num < (float) $value->numMin)
+					warning(lang("survey.validation.number_range", strip_tags($value->title)));
+				if (isset($value->numMax) && is_numeric($value->numMax) && $num > (float) $value->numMax)
+					warning(lang("survey.validation.number_range", strip_tags($value->title)));
+			}
+			if ($value->type === "scale") {
+				$raw = isset($post->$slug) ? trim((string) $post->$slug) : "";
+				if ($raw === "")
+					continue;
+				if (! is_numeric($raw))
+					warning(lang("survey.validation.scale_range", strip_tags($value->title)));
+				$num = (float) $raw;
+				$smin = isset($value->scaleMin) ? (float) $value->scaleMin : 1;
+				$smax = isset($value->scaleMax) ? (float) $value->scaleMax : 5;
+				if ($smin > $smax) {
+					$t = $smin;
+					$smin = $smax;
+					$smax = $t;
+				}
+				if ($num < $smin || $num > $smax)
+					warning(lang("survey.validation.scale_range", strip_tags($value->title)));
+			}
+		}
 
 		$result = false;
 		if ($survey->verifyPhone) {

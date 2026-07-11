@@ -122,8 +122,8 @@
                                 <td class="px-4 py-4 text-sm whitespace-nowrap">
                                     <a live="true" href="/reports/watch/{$survey->id}" data-content="#container" class="bg-blue-600 text-white px-4 transition-colors duration-200 rounded-xl py-1 select-none">Sonuçlar</a>
                                     <a live="true" href="/surveys/edit/{$survey->id}" data-content="#container" class="bg-gray-300 text-black px-4 transition-colors duration-200 rounded-xl py-1 select-none">Değiştir</a>
-                                    <a href="#" n:if="$survey->status == 1" data-url="/surveys/status/{$survey->id}/2" class="{$survey->status == 1 ? 'bg-red-600 text-white' : 'bg-emerald-100/60 text-emerald-500'} shadow-sm px-4 transition-colors duration-200 rounded-xl py-1 select-none">Pasif Yap</a>
-                                    <a href="#" data-url="/surveys/status/{$survey->id}/{$survey->status == 1 ? 2 : 1}" class="{$survey->status == 1 ? 'bg-red-600 text-white' : 'bg-emerald-100/60 text-emerald-500'} hidden shadow-sm px-4 transition-colors duration-200 rounded-xl py-1 select-none">{$survey->status == 1 ? 'Pasif Yap' : 'Aktif Yap'}</a>
+                                    <button type="button" n:if="$survey->status == 1" data-url="/surveys/status/{$survey->id}/2" class="{$survey->status == 1 ? 'bg-red-600 text-white' : 'bg-emerald-100/60 text-emerald-500'} shadow-sm px-4 transition-colors duration-200 rounded-xl py-1 select-none">Pasif Yap</button>
+                                    <button type="button" data-url="/surveys/status/{$survey->id}/{$survey->status == 1 ? 2 : 1}" class="{$survey->status == 1 ? 'bg-red-600 text-white' : 'bg-emerald-100/60 text-emerald-500'} hidden shadow-sm px-4 transition-colors duration-200 rounded-xl py-1 select-none">{$survey->status == 1 ? 'Pasif Yap' : 'Aktif Yap'}</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -139,7 +139,7 @@
         </div>
 
         <div class="flex items-center mt-4 gap-x-4 sm:mt-0">
-            <a href="#" class="flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 capitalize transition-colors duration-200 bg-white border rounded-md sm:w-auto gap-x-2 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800">
+            <button type="button" disabled class="cursor-not-allowed opacity-60 flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 capitalize transition-colors duration-200 bg-white border rounded-md sm:w-auto gap-x-2 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 rtl:-scale-x-100">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18" />
                 </svg>
@@ -147,9 +147,9 @@
                 <span>
                     previous
                 </span>
-            </a>
+            </button>
 
-            <a href="#" class="flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 capitalize transition-colors duration-200 bg-white border rounded-md sm:w-auto gap-x-2 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800">
+            <button type="button" disabled class="cursor-not-allowed opacity-60 flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 capitalize transition-colors duration-200 bg-white border rounded-md sm:w-auto gap-x-2 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700">
                 <span>
                     Next
                 </span>
@@ -157,7 +157,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 rtl:-scale-x-100">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" />
                 </svg>
-            </a>
+            </button>
         </div>
     </div>
 </section>

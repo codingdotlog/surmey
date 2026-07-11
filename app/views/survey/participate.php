@@ -25,7 +25,7 @@
         <img n:if="!empty($survey->photo)" class="object-cover w-full h-64" src="/public/images/survey/{$survey->photo}" alt="Article">
 
         <div class="p-6">
-            <a href="#" class="text-center block my-1 text-xl font-semibold text-gray-800 transition-colors duration-300 transform dark:text-white hover:text-gray-600 hover:underline" tabindex="0" role="link">{$survey->title}</a>
+            <h1 class="text-center block my-1 text-xl font-semibold text-gray-800 dark:text-white">{$survey->title}</h1>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{$survey->about|noescape}</p>
 
             <div class="msg fixed bottom-0 right-2 z-10 my-5 text-lg"></div>
@@ -36,16 +36,16 @@
                         $(function(){
                             $this = $(".generated");
                             const data = {$survey->data|noescape}
+                            window.__SURMEY_SURVEY_QUESTIONS = data;
                             $this.html("");
 
                             data.forEach(element => $this.append(renderFormEntry(element)))
 
-                            data.forEach(element => {
-                                element.conditions.forEach(condition => $("[data-slug='" + condition.value + "']").hide())
-                            })
+                            if (window.syncSurveyBranching) window.syncSurveyBranching();
+                            if (window.__SURMEY_setupSectionPager) window.__SURMEY_setupSectionPager($this);
                         })
                     </script>
-                    <button class="bg-blue-600 px-5 m-auto rounded-md text-white py-2">Gönder</button>
+                    <button class="bg-blue-600 px-5 m-auto rounded-md text-white py-2">{lang('participate.submit')}</button>
                 </div>
             </form>
         </div>

@@ -8,6 +8,37 @@ use Verot\Upload\Upload;
 
 class Surveys extends Controller
 {
+    /** Strings for public/js/app.js (survey builder). */
+    protected function surveyBuilderI18nJson(): string
+    {
+        $keys = [
+            'survey.builder.questions', 'survey.builder.create', 'survey.builder.developing', 'survey.builder.preview',
+            'survey.builder.required', 'survey.builder.horizontal_layout', 'survey.builder.condition_none', 'survey.builder.close',
+            'survey.builder.radio_list', 'survey.builder.checkbox_list', 'survey.builder.textarea', 'survey.builder.description',
+            'survey.builder.short_text', 'survey.builder.email', 'survey.builder.phone', 'survey.builder.url', 'survey.builder.date', 'survey.builder.time',
+            'survey.builder.number', 'survey.builder.select', 'survey.builder.scale',
+            'survey.builder.star_rating', 'survey.builder.like_dislike_scale', 'survey.builder.single_choice_scale',
+            'survey.builder.negative_label', 'survey.builder.positive_label', 'survey.builder.negative_value', 'survey.builder.positive_value',
+            'survey.builder.neutral_value', 'survey.builder.steps', 'survey.builder.unsectioned_zone',
+            'survey.builder.section', 'survey.builder.new_question', 'survey.builder.new_answer',
+            'survey.builder.desc_subtype.info', 'survey.builder.desc_subtype.warning', 'survey.builder.desc_subtype.success', 'survey.builder.desc_subtype.danger',
+            'survey.builder.max_length', 'survey.builder.min', 'survey.builder.max', 'survey.builder.step',
+            'survey.builder.scale_from', 'survey.builder.scale_to', 'survey.builder.label_left', 'survey.builder.label_right',
+            'survey.builder.cover_photo', 'survey.builder.upload_file', 'survey.builder.drag_drop', 'survey.builder.image_formats',
+            'survey.builder.about_survey', 'survey.builder.about_hint', 'survey.builder.cancel', 'survey.builder.save',
+            'survey.builder.anonymous_publish', 'survey.builder.apply_template', 'survey.builder.template_blank',
+            'survey.builder.template_satisfaction', 'survey.builder.template_contact',
+            'survey.builder.template_event_registration', 'survey.builder.template_customer_feedback', 'survey.builder.template_employee_pulse', 'survey.builder.template_lead_capture',
+            'survey.builder.draft_banner', 'survey.builder.section_subtitle',
+            'survey.builder.phone_placeholder', 'survey.builder.back', 'survey.builder.next', 'survey.builder.finish',
+        ];
+        $out = [];
+        foreach ($keys as $k) {
+            $out[$k] = lang($k);
+        }
+        return json_encode($out, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS);
+    }
+
     #[route(method: route::get | route::xhr_get, session: "user")]
     public function index()
     {
@@ -30,7 +61,10 @@ class Surveys extends Controller
             "url" => "apply",
             "surveyFormTitle" => lang("create.survey"),
             "user" => User::info(),
-            "showIfOnEditMode" => false
+            "showIfOnEditMode" => false,
+            "surveyBuilderI18nJson" => $this->surveyBuilderI18nJson(),
+            "isSurveyEdit" => false,
+            "isSurveyCreateJs" => "true",
         ]);
     }
 
@@ -178,7 +212,10 @@ class Surveys extends Controller
             "user" => User::info(),
             "surveyFormTitle" => $surveyFormTitle,
             "url" => $isOnEditMode ? "apply/$surveyId" : "apply",
-            "showIfOnEditMode" => $isOnEditMode ? "<script>$(()=>{window.prepareSurveyForEditing(`$result`, `$data`)})</script>" : ""
+            "showIfOnEditMode" => $isOnEditMode ? "<script>$(()=>{window.prepareSurveyForEditing(`$result`, `$data`)})</script>" : "",
+            "surveyBuilderI18nJson" => $this->surveyBuilderI18nJson(),
+            "isSurveyEdit" => true,
+            "isSurveyCreateJs" => "false",
         ]);
     }
 

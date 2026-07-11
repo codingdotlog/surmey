@@ -78,7 +78,7 @@ final class Survey extends Model
         $participators = [];
         foreach ($uniqueParticipants as $participant) {
             $fullData = Database::get()
-                ->select("answers.*, personals.fullname, personals.department")
+                ->select("answers.*, personals.fullname, personals.department, personals.phone1, personals.phone2, personals.status")
                 ->from("answers")
                 ->leftJoin("personals", "personals.id = answers.personalId")
                 ->where("answers.id", "=", $participant->maxId)
@@ -149,6 +149,20 @@ final class Survey extends Model
         }
 
         $generatedData = [];
+        $slugToSection = [];
+        $sectionSlugs = [];
+        $activeSectionSlug = null;
+        foreach ($questionData as $q) {
+            if (! isset($q->slug))
+                continue;
+            if ($q->type === "section") {
+                $activeSectionSlug = $q->slug;
+                $sectionSlugs[$q->slug] = true;
+                $slugToSection[$q->slug] = $q->slug;
+                continue;
+            }
+            $slugToSection[$q->slug] = $activeSectionSlug;
+        }
 
         $groupIndex = 0;
         #for IK
@@ -158,13 +172,24 @@ final class Survey extends Model
             $groups = ["default"];
 
         $isFirstDescription = true;
+        $currentGroupName = $groups[$groupIndex] ?? "default";
 
         foreach ($questionData as $question) {
+            if ($question->type == "section") {
+                $sectionTitle = trim(strip_tags((string) ($question->title ?? "")));
+                if ($sectionTitle === "")
+                    $sectionTitle = "section-" . ($groupIndex + 1);
+                $currentGroupName = $sectionTitle;
+                continue;
+            }
+
             if ($question->type == "description") {
                 if ($isFirstDescription)
                     $isFirstDescription = false;
-                else
+                else {
                     $groupIndex++;
+                    $currentGroupName = $groups[$groupIndex] ?? $currentGroupName;
+                }
 
                 continue;
             }
@@ -187,7 +212,25 @@ final class Survey extends Model
                 }
             }
 
-            $group0 = $groups[$groupIndex];
+            if (! $hasCondition) {
+                $sectionSlug = $slugToSection[$question->slug] ?? null;
+                if ($sectionSlug && isset($sectionSlugs[$sectionSlug]) && $sectionSlug !== $question->slug) {
+                    foreach ($questionData as $parentQ) {
+                        if (empty($parentQ->conditions))
+                            continue;
+                        foreach ($parentQ->conditions as $cond) {
+                            if ($cond->value == $sectionSlug) {
+                                $hasCondition = true;
+                                $parentQuestion = $parentQ;
+                                $parentAnswerIndex = $cond->index;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $group0 = $currentGroupName ?: ($groups[$groupIndex] ?? "default");
             
             // Radio için tüm katılımcıları döndüren fonksiyon
             $searchAll = function () use ($question, $answerData, $hasCondition, $parentQuestion, $parentAnswerIndex) {
@@ -233,7 +276,7 @@ final class Survey extends Model
                     $s = $question->type == "checkbox" ? $question->slug . $k : $question->slug;
 
                     $exists = array_key_exists($s, $decodedJson);
-                    if ($exists && $question->type == "radio")
+                    if ($exists && ($question->type == "radio" || $question->type == "select" || $question->type == "sentiment_scale"))
                         return $decodedJson[$s] == $k;
 
                     return $exists;
@@ -241,8 +284,8 @@ final class Survey extends Model
                 }, ARRAY_FILTER_USE_BOTH);
             };
 
-            // Radio ve checkbox için farklı işlem
-            if ($question->type == "radio") {
+            // Radio, select ve checkbox için farklı işlem
+            if ($question->type == "radio" || $question->type == "select" || $question->type == "sentiment_scale") {
                 // Radio için: Her katılımcıyı bir kez kontrol et ve cevabını bul
                 $allParticipants = $searchAll();
                 
@@ -297,18 +340,21 @@ final class Survey extends Model
                 }
             }
 
-            if ($question->type != "textarea")
+            $textLike = ["textarea", "short_text", "email", "number", "scale", "url", "phone", "date", "time"];
+            if (! in_array($question->type, $textLike, true))
                 continue;
 
             $data = $searchAll();
 
             foreach ($data as $answer) {
-                $answerValue = json_decode($answer->data, JSON_OBJECT_AS_ARRAY)[$question->slug];
+                $decoded = json_decode($answer->data, JSON_OBJECT_AS_ARRAY);
+                if (! isset($decoded[$question->slug]))
+                    continue;
+                $answerValue = $decoded[$question->slug];
                 $generatedData[$group0][$question->type . "::" . $question->title][] = (object) [
                     "id" => $answer->participantKey ?? $answer->personalId,
                     "fullname" => $answer->fullname,
                     "department" => $answer->department,
-                    #"answer" => $answerTitle,
                     "value" => $answerValue
                 ];
 
@@ -324,78 +370,71 @@ final class Survey extends Model
 
         $result = [];
 
-        $group0Data = current($generatedData);
-        if (! $group0Data)
-            $group0Data = [];
+        foreach ($generatedData as $groupName => $groupQuestions) {
+            foreach ($groupQuestions as $key => $question) {
+                $split = explode("::", $key, 2);
 
-        foreach ($group0Data as $key => $question) {
-            $split = explode("::", $key);
+                $type = $split[0] ?? "unknown";
+                $title = $split[1] ?? $key;
+                $displayTitle = ($groupName && $groupName !== "default")
+                    ? ($groupName . " / " . $title)
+                    : $title;
 
-            $type = $split[0];
-            $title = $split[1];
-
-            $result[$title] = [
-                "type" => $type
-            ];
-
-            $result[$title]["list-json"] = [];
-
-            $totalCount = 0;
-            if ($type === "radio" || $type === "checkbox") {
-                // Radio ve Checkbox için benzersiz katılımcı sayısını hesaplamak için
-                $uniqueParticipantIds = [];
-                
-                foreach ($question as $answerK => $answerV) {
-                    $count = count($answerV);
-                    $result[$title]["answers"][$answerK] = $count;
-                    
-                    // Radio ve Checkbox için benzersiz katılımcı ID'lerini topla
-                    foreach ($answerV as $participant) {
-                        // personalId veya id field'ını kontrol et
-                        $participantId = $participant->id ?? $participant->personalId ?? null;
-                        if ($participantId && !in_array($participantId, $uniqueParticipantIds)) {
-                            $uniqueParticipantIds[] = $participantId;
-                        }
-                    }
-                }
-                
-                // Radio ve Checkbox için benzersiz katılımcı sayısını kullan
-                $totalCount = count($uniqueParticipantIds);
-
-                $result[$title]["total"] = $totalCount;
-            } else {
-                // Textarea için benzersiz katılımcı sayısını hesaplamak için
-                $uniqueParticipantIds = [];
-                $emptyCount = $fillCount = 0;
-                
-                foreach ($question as $answerK => $answerV) {
-                    // personalId veya id field'ını kontrol et
-                    $participantId = $answerV->id ?? $answerV->personalId ?? null;
-                    
-                    // Benzersiz katılımcı kontrolü
-                    if ($participantId && !in_array($participantId, $uniqueParticipantIds)) {
-                        $uniqueParticipantIds[] = $participantId;
-                        
-                        if (empty($answerV->value))
-                            $emptyCount++;
-                        else {
-                            $fillCount++;
-                            $result[$title]["list-json"][] = $answerV;
-                        }
-                    }
-                }
-
-                $result[$title]["answers"] = [
-                    "Dolu" => $fillCount,
-                    "Boş" => $emptyCount
+                $result[$displayTitle] = [
+                    "type" => $type,
+                    "group" => $groupName,
                 ];
 
-                $totalCount = count($uniqueParticipantIds);
+                $result[$displayTitle]["list-json"] = [];
 
-                $result[$title]["list-json"] = data_json($result[$title]["list-json"]);
+                $totalCount = 0;
+                if ($type === "radio" || $type === "checkbox" || $type === "select" || $type === "sentiment_scale") {
+                    $uniqueParticipantIds = [];
+
+                    foreach ($question as $answerK => $answerV) {
+                        $count = count($answerV);
+                        $result[$displayTitle]["answers"][$answerK] = $count;
+
+                        foreach ($answerV as $participant) {
+                            $participantId = $participant->id ?? $participant->personalId ?? null;
+                            if ($participantId && !in_array($participantId, $uniqueParticipantIds)) {
+                                $uniqueParticipantIds[] = $participantId;
+                            }
+                        }
+                    }
+
+                    $totalCount = count($uniqueParticipantIds);
+                    $result[$displayTitle]["total"] = $totalCount;
+                } else {
+                    $uniqueParticipantIds = [];
+                    $emptyCount = $fillCount = 0;
+
+                    foreach ($question as $answerK => $answerV) {
+                        $participantId = $answerV->id ?? $answerV->personalId ?? null;
+
+                        if ($participantId && !in_array($participantId, $uniqueParticipantIds)) {
+                            $uniqueParticipantIds[] = $participantId;
+
+                            if (empty($answerV->value))
+                                $emptyCount++;
+                            else {
+                                $fillCount++;
+                                $result[$displayTitle]["list-json"][] = $answerV;
+                            }
+                        }
+                    }
+
+                    $result[$displayTitle]["answers"] = [
+                        lang("survey.report.filled") => $fillCount,
+                        lang("survey.report.empty") => $emptyCount
+                    ];
+
+                    $totalCount = count($uniqueParticipantIds);
+                    $result[$displayTitle]["list-json"] = data_json($result[$displayTitle]["list-json"]);
+                }
+
+                $result[$displayTitle]["total"] = $totalCount;
             }
-
-            $result[$title]["total"] = $totalCount;
         }
 
         return $result;

@@ -13,13 +13,13 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
     <h1 class="text-center">{$surveyTitle}</h1>
     <div class="flex justify-between content-between w-full mb-3">
         <div class="inline-flex overflow-hidden relative bg-white border divide-x rounded-lg dark:bg-gray-900 rtl:flex-row-reverse shadow-sm dark:border-gray-700 dark:divide-gray-700">
-            <a id="preview" href="javascript:void(0)" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 1" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 1 }">
+            <button type="button" id="preview" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 1" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 1 }">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mx-1 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
                 <span class="ml-1">Tablo</span>
-            </a>
-            <a href="javascript:void(0)" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 2" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 2 }">
+            </button>
+            <button type="button" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 2" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 2 }">
                 <svg class="w-5 h-5 mx-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                     <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -28,9 +28,9 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                     </g>
                 </svg>
                 <span class="ml-1">Çizelge</span>
-            </a>
+            </button>
 
-            <a href="javascript:void(0)" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 3" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 3 }">
+            <button type="button" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 3" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 3 }">
                 <svg class="w-5 h-5 mx-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                     <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -39,9 +39,9 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                     </g>
                 </svg>
                 <span class="ml-1">Hizalanmış</span>
-            </a>
+            </button>
 
-            <a n:if="!$anonymous" href="javascript:void(0)" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 4" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 4 }">
+            <button type="button" n:if="!$anonymous" class="cursor-default inline-flex items-center px-4 py-1 text-xs font-medium text-gray-600 transition-colors duration-200 sm:text-sm dark:text-gray-300" x-on:click="current = 4" x-bind:class="{ 'text-white bg-blue-600 dark:bg-blue-800': current === 4 }">
                 <svg class="w-5 h-5 mx-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                     <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -52,7 +52,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                 <span class="relative ml-1">
                     Katılanlar <b>({count($participators)})</b>
                 </span>
-            </a>
+            </button>
         </div>
         <div class="flex justify-items-end">
             <!-- Notification Modal -->
@@ -324,7 +324,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                             </a>
                         </li>
                         <li>
-                            <a href="#" data-url="/reports/reset/{$surveyId}" class="flex items-center content-center p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                            <button type="button" data-url="/reports/reset/{$surveyId}" class="w-full text-left flex items-center content-center p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
                                 <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                                     <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -341,7 +341,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                                         Geçerli ankete katılan tüm katılımcıları siler ve temizler.
                                     </p>
                                 </div>
-                            </a>
+                            </button>
                         </li>
                     </ul>
                 </div>
@@ -358,7 +358,7 @@ x-effect="activeTab = types.includes('email') ? 'email' : (types.includes('sms')
                     <div class="dark:bg-gray-800 bg-white rounded-xl m-1 my-3 overflow-hidden" n:foreach="$value['answers'] as $aK => $aV">
                         <span class="block text-center bg-blue-600 text-white p-1 overflow-hidden">{str_ireplace('\"', '"', $aK)|noescape}</span>
                         <span class="block text-4xl text-center text-gray-500 p-1 dark:text-gray-300">
-                            {if $value["type"] != "radio" && $value["type"] != "checkbox" && $aK != "Boş"}
+                            {if $value["type"] != "radio" && $value["type"] != "checkbox" && $value["type"] != "select" && $value["type"] != "sentiment_scale" && $aK != $reportEmptyLabel}
                             <button @click="isAnswerModalOpened = !isAnswerModalOpened" title="Anonim Cevapları Göster" class="text-blue-500 underline dark:text-blue-400 font-bold hover:bg-blue-500 rounded-xl transition-colors duration-200 hover:text-white" data-json='{$value["list-json"]|noescape}'>{$aV}</button>
                             {else}
                             {$aV}

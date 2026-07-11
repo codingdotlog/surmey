@@ -44,7 +44,7 @@ class Reports extends Controller
             ->from("personals")
             ->where("id", "!=", "0")
             ->where("status", "=", 1)
-            ->orderBy("fullName", "ASC")
+            ->orderBy("fullname", "ASC")
             ->results();
 
         $args = [
@@ -54,7 +54,8 @@ class Reports extends Controller
             "anonymous" => $survey->anonymous,
             "surveyId" => $surveyId,
             "departmentList" => $departmentList,
-            "personList" => $personList
+            "personList" => $personList,
+            "reportEmptyLabel" => lang("survey.report.empty"),
         ];
 
         if (!$survey->anonymous)
