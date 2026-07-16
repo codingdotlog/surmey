@@ -204,7 +204,7 @@ class Main extends Controller
             ]);
         }
         
-        if ($survey->verifyPhone && !session_check("user")) {
+        if ($survey->verifyPhone && !session_check("user") && !session_check("participator")) {
             session_set("surveySlug", $slug);
             session_set("surveyId", $survey->id);
             redirect("/participate");
