@@ -1,6 +1,6 @@
 <?php
 return [
-    "username" => "SMS_ISER",
-    "password" => "SMS_PASS",
-    "header" => "SMS_TITLE"
+    "username" => "8503023483",
+    "password" => "HV0P8AZ7",
+    "header" => "HAUS MAKINA"
 ];

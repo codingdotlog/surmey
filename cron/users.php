@@ -50,7 +50,7 @@ if ($_GET["action"] == "users") {
 			die();
 		}
 		//DELETE TABLE
-		$delete = $pdo->prepare("TRUNCATE TABLE personals");
+		$delete = $pdo->prepare("SET FOREIGN_KEY_CHECKS=0;TRUNCATE TABLE personals;SET FOREIGN_KEY_CHECKS=1;");
 		$delete->execute();
 		$delete->closeCursor();
 
@@ -67,7 +67,7 @@ if ($_GET["action"] == "users") {
 		# '90',  => belenkuyu
 		# '91',  => turbocentri
 		
-		$companies = "'01', '07', '20', '21', '22', '23', '24', '25', '26', '27', '29'";
+		$companies = "'01', '05', '07', '20', '21', '22', '23', '24', '25', '26', '27', '29'";
 		#if($dbName = "flamingo")
 			#$companies = "'01'";
 		
@@ -165,6 +165,8 @@ if ($_GET["action"] == "users") {
 				}
 			}
 		}
+		
+		
 
 		#echo "select * from personals where contactnum in (".join("','", $nums).")";
 	}
