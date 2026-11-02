@@ -2,23 +2,43 @@
 require_once "vendor/autoload.php";
 
 /*
- * The framework reads the selected language from the "lang" cookie.  Create
- * the cookie before the application boots; existing cookies are left to the
- * framework's cookie security layer.
+ * The framework reads the selected language from the signed "lang" cookie.
+ * Normalize it before the application boots so legacy plain-text cookies are
+ * migrated before the framework validates them.
  */
 function surmeyLanguage(): string
 {
-    if (isset($_COOKIE['lang']) && in_array($_COOKIE['lang'], ['tr_TR', 'en_US'], true)) {
-        return $_COOKIE['lang'];
+    $cookieConfig = require __DIR__ . '/app/config/cookie.php';
+    $cookieValue = $_COOKIE['lang'] ?? null;
+    $language = null;
+
+    if (is_string($cookieValue)) {
+        [$value, $signature] = array_pad(explode('--', $cookieValue, 2), 2, null);
+        $isSigned = is_string($signature)
+            && hash_equals(md5($value . $cookieConfig['key']), $signature);
+
+        if ($isSigned && in_array($value, ['tr_TR', 'en_US'], true)) {
+            return $value;
+        }
+
+        // Migrate the plain cookie created by the previous implementation.
+        if (in_array($cookieValue, ['tr_TR', 'en_US'], true)) {
+            $language = $cookieValue;
+        }
     }
 
-    $acceptLanguage = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
-    $preferredLanguage = strtolower(trim(explode(',', $acceptLanguage)[0] ?? ''));
-    $language = str_starts_with($preferredLanguage, 'tr') ? 'tr_TR' : 'en_US';
+    if ($language === null) {
+        $acceptLanguage = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+        $preferredLanguage = strtolower(trim(explode(',', $acceptLanguage)[0] ?? ''));
+        $language = str_starts_with($preferredLanguage, 'tr') ? 'tr_TR' : 'en_US';
+    }
 
-    setcookie('lang', $language, [
+    $signedCookie = $language . '--' . md5($language . $cookieConfig['key']);
+    $_COOKIE['lang'] = $signedCookie;
+    setcookie('lang', $signedCookie, [
         'expires' => time() + (365 * 24 * 60 * 60),
         'path' => '/',
+        'httponly' => true,
         'samesite' => 'Lax'
     ]);
 
@@ -27,14 +47,7 @@ function surmeyLanguage(): string
 
 function surmeyHtmlLanguage(): string
 {
-    if (isset($_COOKIE['lang']) && in_array($_COOKIE['lang'], ['tr_TR', 'en_US'], true)) {
-        return $_COOKIE['lang'] === 'tr_TR' ? 'tr' : 'en';
-    }
-
-    $acceptLanguage = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
-    $preferredLanguage = strtolower(trim(explode(',', $acceptLanguage)[0] ?? ''));
-
-    return str_starts_with($preferredLanguage, 'tr') ? 'tr' : 'en';
+    return surmeyLanguage() === 'tr_TR' ? 'tr' : 'en';
 }
 
 surmeyLanguage();
