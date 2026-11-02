@@ -11,18 +11,20 @@ $contents = file_get_contents($frameworkFile);
 $from = '$GLOBALS["APP_LANGUAGE"] = include_once LANG_DIR . "/$lang.php";';
 $fromPatched = '$GLOBALS["APP_LANGUAGE"] = include LANG_DIR . "/$lang.php";';
 $to = '$GLOBALS["APP_LANGUAGE"] = require LANG_DIR . "/$lang.php";';
-
-if (strpos($contents, $to) !== false) {
-    exit(0);
-}
+$languageFrom = '$lang = $cookie->get("lang");';
+$languageTo = '$lang = $cookie->get("lang");\n            $lang = explode("--", $lang, 2)[0];';
 
 if (strpos($contents, $from) !== false) {
     $contents = str_replace($from, $to, $contents);
 } elseif (strpos($contents, $fromPatched) !== false) {
     $contents = str_replace($fromPatched, $to, $contents);
-} else {
+} elseif (strpos($contents, $to) === false) {
     fwrite(STDERR, "sdphp language loader signature was not found; patch skipped.\n");
     exit(0);
+}
+
+if (strpos($contents, $languageTo) === false && strpos($contents, $languageFrom) !== false) {
+    $contents = str_replace($languageFrom, $languageTo, $contents);
 }
 
 file_put_contents($frameworkFile, $contents);
