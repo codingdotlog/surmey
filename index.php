@@ -12,6 +12,7 @@ require_once "vendor/autoload.php";
  */
 function surmeyLanguage(): string
 {
+    global $surmeyCookieNeedsRefresh;
     $cookieConfig = require __DIR__ . '/app/config/cookie.php';
     $cookieValue = $_COOKIE['lang'] ?? null;
     $language = null;
@@ -24,6 +25,8 @@ function surmeyLanguage(): string
         if ($isSigned && in_array($value, ['tr_TR', 'en_US'], true)) {
             return $value;
         }
+
+        $surmeyCookieNeedsRefresh = true;
 
         // Migrate the plain cookie created by the previous implementation.
         if (in_array($cookieValue, ['tr_TR', 'en_US'], true)) {
@@ -58,6 +61,11 @@ function surmeyHtmlLanguage(): string
 }
 
 surmeyLanguage();
+if (!empty($surmeyCookieNeedsRefresh) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    header('Cache-Control: no-store');
+    header('Location: ' . ($_SERVER['REQUEST_URI'] ?? '/'), true, 302);
+    exit;
+}
 
 $elapsedTime = \Core\App::weakup(__DIR__);
 #stackMessages("Page loaded in: $elapsedTime s", true);
