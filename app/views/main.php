@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr" class="scroll-smooth md:scroll-auto">
+<html lang="{surmeyHtmlLanguage()}" class="scroll-smooth md:scroll-auto">
 
 <head>
     <meta charset="UTF-8">

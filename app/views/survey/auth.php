@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="h-full" lang="tr">
+<html class="h-full" lang="{surmeyHtmlLanguage()}">
 
 <head>
     <meta charset="UTF-8">
