@@ -67,7 +67,11 @@ if ($_GET["action"] == "users") {
 		# '90',  => belenkuyu
 		# '91',  => turbocentri
 		
-		$companies = "'01', '05', '07', '20', '21', '22', '23', '24', '25', '26', '27', '29'";
+		if ($dbName == "flamingo") {
+			$companies = "'01', '05', '07', '20', '21', '22', '23', '24', '25', '26', '27', '29'";
+		} else if ($dbName == "surmey") {
+			$companies = "'01', '06', '05', '07', '20', '21', '22', '23', '24', '25', '26', '27', '29'";
+		}
 		#if($dbName = "flamingo")
 			#$companies = "'01'";
 		
@@ -166,7 +170,35 @@ if ($_GET["action"] == "users") {
 			}
 		}
 		
-		
+		# ---- STATİK PERSONELLER (Oracle'da karşılığı yok) ----
+		$staticPersonals = [
+			[
+				"id"          => 999001,              // Oracle PERSID aralığının dışında sabit bir değer
+				"contactnum"  => "999999999001",
+				"fullname"    => "İnsan Kaynakları",
+				"phone1"      => null,
+				"phone2"      => null,
+				"email"       => "ik@haus.com.tr",
+				"department"  => "İNSAN KAYNAKLARI",
+				"tc"          => null,
+				"gender"      => null,
+				"status"      => 1,                    // aktif
+				"type"        => null,
+				"typeText"    => null,
+				"designation" => "İNSAN KAYNAKLARI UZMANI",
+				"company"     => "01",
+				"birthday"    => "1970-01-01",
+				"startedDate" => "1970-01-01 00:00:00",
+			],
+		];
+
+		$insertStatic = $pdo->prepare("INSERT INTO personals (id, contactnum, fullname, phone1, phone2, email, department, tc, gender, status, type, typeText, designation, company, birthday, startedDate) VALUES (:id, :contactnum, :fullname, :phone1, :phone2, :email, :department, :tc, :gender, :status, :type, :typeText, :designation, :company, :birthday, :startedDate)");
+
+		foreach ($staticPersonals as $staticPersonal) {
+			$insertStatic->execute($staticPersonal);
+			$insertStatic->closeCursor();
+		}
+		# ---- /STATİK PERSONELLER ----
 
 		#echo "select * from personals where contactnum in (".join("','", $nums).")";
 	}
