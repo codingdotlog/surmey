@@ -12,7 +12,8 @@ $from = '$GLOBALS["APP_LANGUAGE"] = include_once LANG_DIR . "/$lang.php";';
 $fromPatched = '$GLOBALS["APP_LANGUAGE"] = include LANG_DIR . "/$lang.php";';
 $to = '$GLOBALS["APP_LANGUAGE"] = require LANG_DIR . "/$lang.php";';
 $languageFrom = '$lang = $cookie->get("lang");';
-$languageTo = '$lang = $cookie->get("lang");\n            $lang = explode("--", $lang, 2)[0];';
+$languageTo = $languageFrom . PHP_EOL . '            $lang = explode("--", $lang, 2)[0];';
+$languageToLiteral = $languageFrom . '\n            $lang = explode("--", $lang, 2)[0];';
 
 if (strpos($contents, $from) !== false) {
     $contents = str_replace($from, $to, $contents);
@@ -23,7 +24,9 @@ if (strpos($contents, $from) !== false) {
     exit(0);
 }
 
-if (strpos($contents, $languageTo) === false && strpos($contents, $languageFrom) !== false) {
+if (strpos($contents, $languageToLiteral) !== false) {
+    $contents = str_replace($languageToLiteral, $languageTo, $contents);
+} elseif (strpos($contents, $languageTo) === false && strpos($contents, $languageFrom) !== false) {
     $contents = str_replace($languageFrom, $languageTo, $contents);
 }
 
