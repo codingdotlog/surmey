@@ -9,6 +9,11 @@
     "config": {
         "bin-dir": "bin/"
     },
+    "scripts": {
+        "post-autoload-dump": [
+            "@php scripts/patch-sdphp-language-loader.php"
+        ]
+    },
     "require": {
         "sdclowen/sdphp": "dev-master",
         "verot/class.upload.php": "^2.1",
