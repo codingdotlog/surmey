@@ -116,5 +116,7 @@ return [
 	"participate.sms.otp.body" => "Anket sistemine giriş için onay kodu: %s",
 	"participate.sms.otp.body.ascii" => "Anket katilim icin onay kodu: %s",
 	"participate.email.otp.subject" => "Anket Doğrulama Kodu",
-	"participate.email.otp.body" => "Anket katılımı için doğrulama kodunuz: <b>%s</b>"
+	"participate.email.otp.body" => "Anket katılımı için doğrulama kodunuz: <b>%s</b>",
+    "auth.welcome" => "Hoşgeldiniz",
+    "auth.login.desc" => "Lütfen Giriş Bilgilerinizi Girin"
 ];

@@ -116,5 +116,7 @@ return [
     "participate.sms.otp.body" => "Your verification code for the survey system: %s",
     "participate.sms.otp.body.ascii" => "Survey verification code: %s",
     "participate.email.otp.subject" => "Survey Verification Code",
-    "participate.email.otp.body" => "Your verification code for survey participation: <b>%s</b>"
+    "participate.email.otp.body" => "Your verification code for survey participation: <b>%s</b>",
+    "auth.welcome" => "Welcome",
+    "auth.login.desc" => "Please enter your login details"
 ];

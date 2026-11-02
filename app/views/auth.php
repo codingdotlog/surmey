@@ -19,14 +19,14 @@
                 {include '..\..\public\images\logo.svg'}
             </div>
             <div class="w-72">
-                <h1 class="text-xl font-semibold">Hoşgeldiniz</h1>
-                <small class="text-gray-400">Lütfen Giriş Bilgilerinizi Girin</small>
+                <h1 class="text-xl font-semibold">{lang("auth.welcome")}</h1>
+                <small class="text-gray-400">{lang("auth.login.desc")}</small>
 
                 <form role="form" class="space-y-6" action="/auth" method="post" data-content=".message">
                     {csrf()|noescape}
                     <div class="mb-3">
                         <label class="mb-2 block text-xs font-semibold">{lang("username.or.email")}</label>
-                        <input type="text" name="userNameOrEmail" placeholder="Enter your username or email" class="transition-colors transition-duration-200 block w-full rounded-md border border-gray-300 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 p-2 text-gray-700 dark:text-gray-200 dark:border-slate-600 dark:bg-gray-900" />
+                        <input type="text" name="userNameOrEmail" placeholder="{lang("username.or.email")}" class="transition-colors transition-duration-200 block w-full rounded-md border border-gray-300 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700 p-2 text-gray-700 dark:text-gray-200 dark:border-slate-600 dark:bg-gray-900" />
                     </div>
 
                     <div class="mb-3">
@@ -35,12 +35,12 @@
                     </div>
 
                     <div class="mb-3 flex flex-wrap content-center">
-                        <input id="remember" type="checkbox" class="mr-1 checked:bg-purple-700" /> <label for="remember" class="mr-auto text-xs font-semibold">Remember for 30 days</label>
+                        <input id="remember" type="checkbox" class="mr-1 checked:bg-purple-700" /> <label for="remember" class="mr-auto text-xs font-semibold">{lang("remember.me")}</label>
                         <!--<a href="#" class="text-xs font-semibold text-purple-700">Forgot password?</a>-->
                     </div>
 
                     <div class="mb-3">
-                        <button type="submit" class="mb-1.5 block w-full text-center text-white bg-blue-600 hover:bg-blue-800 transition-colors transition-duration-200 px-2 py-1.5 rounded-md">Sign in</button>
+                        <button type="submit" class="mb-1.5 block w-full text-center text-white bg-blue-600 hover:bg-blue-800 transition-colors transition-duration-200 px-2 py-1.5 rounded-md">{lang("login")}</button>
                     </div>
                 </form>
             </div>
