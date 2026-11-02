@@ -35,12 +35,15 @@ function surmeyLanguage(): string
 
     $signedCookie = $language . '--' . md5($language . $cookieConfig['key']);
     $_COOKIE['lang'] = $signedCookie;
-    setcookie('lang', $signedCookie, [
-        'expires' => time() + (365 * 24 * 60 * 60),
-        'path' => '/',
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ]);
+    setcookie(
+        'lang',
+        $signedCookie,
+        time() + (365 * 24 * 60 * 60),
+        '/',
+        '',
+        false,
+        true
+    );
 
     return $language;
 }
