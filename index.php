@@ -67,5 +67,12 @@ if (!empty($surmeyCookieNeedsRefresh) && ($_SERVER['REQUEST_METHOD'] ?? 'GET') =
     exit;
 }
 
-$elapsedTime = \Core\App::weakup(__DIR__);
+try {
+    $elapsedTime = \Core\App::weakup(__DIR__);
+} catch (\Throwable $exception) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo $exception;
+    exit;
+}
 #stackMessages("Page loaded in: $elapsedTime s", true);
